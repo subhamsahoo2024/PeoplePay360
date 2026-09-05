@@ -7,7 +7,7 @@ import {
   Bell,
   X,
   CheckCheck,
-  Palmtree,
+  CalendarHeart,
   CreditCard,
   UserCheck,
   User,
@@ -31,7 +31,7 @@ export function NotificationsDrawer({ isOpen, onClose }: NotificationsDrawerProp
   const getIcon = (type: string) => {
     switch (type) {
       case 'leave':
-        return <Palmtree className="w-4 h-4 text-[#714B67]" />;
+        return <CalendarHeart className="w-4 h-4 text-[#714B67]" />;
       case 'payroll':
         return <CreditCard className="w-4 h-4 text-[#438A6B]" />;
       case 'attendance':

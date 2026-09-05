@@ -5,7 +5,7 @@ import { useApp } from '@/lib/context/app-context';
 import {
   LayoutDashboard,
   CalendarCheck,
-  Palmtree,
+  CalendarHeart,
   FileText,
   User,
   X,
@@ -31,7 +31,7 @@ export function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
   const navItems = [
     { id: 'overview', label: 'Overview', icon: LayoutDashboard },
     { id: 'attendance', label: 'Attendance', icon: CalendarCheck },
-    { id: 'leave', label: 'Leave', icon: Palmtree },
+    { id: 'leave', label: 'Leave', icon: CalendarHeart },
     { id: 'my_loans', label: 'My Loans', icon: CreditCard },
     { id: 'payslips', label: 'My Payslips', icon: FileText },
     { id: 'profile', label: 'Profile', icon: User },
@@ -125,7 +125,7 @@ export function MobileBottomNav() {
   const primaryMobileTabs = [
     { id: 'overview', label: 'Home', icon: LayoutDashboard },
     { id: 'attendance', label: 'Attendance', icon: CalendarCheck },
-    { id: 'leave', label: 'Leave', icon: Palmtree },
+    { id: 'leave', label: 'Leave', icon: CalendarHeart },
     { id: 'payslips', label: 'Payslips', icon: FileText },
     { id: 'profile', label: 'Profile', icon: User },
   ];

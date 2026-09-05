@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&display=swap');
 
 @theme {
   --color-plum-primary: #714B67;
@@ -22,6 +23,14 @@ body {
   color: var(--color-text-primary);
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* Script display face for primary page headings. */
+h1,
+h2 {
+  font-family: 'Caveat', 'Playlist Script', cursive;
+  font-weight: 600;
+  letter-spacing: normal;
 }
 
 /* Tabular numbers for salaries */

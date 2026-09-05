@@ -5,7 +5,7 @@ import { useApp } from '@/lib/context/app-context';
 import {
   LayoutDashboard,
   CalendarCheck,
-  Palmtree,
+  CalendarHeart,
   FileText,
   User,
   Users,
@@ -65,7 +65,7 @@ export function Sidebar() {
   const essNavItems: NavItem[] = [
     { id: 'overview', label: 'Overview', icon: LayoutDashboard },
     { id: 'attendance', label: 'Attendance', icon: CalendarCheck },
-    { id: 'leave', label: 'Leave', icon: Palmtree },
+    { id: 'leave', label: 'Leave', icon: CalendarHeart },
     { id: 'my_loans', label: 'My Loans', icon: CreditCard },
     { id: 'payslips', label: 'My Payslips', icon: FileText },
     { id: 'profile', label: 'Profile', icon: User },
@@ -140,6 +140,7 @@ export function Sidebar() {
               title={isCollapsed ? item.label : undefined}
               className={cn(
                 'w-full flex items-center gap-3 px-3 py-2 rounded-[12px] text-xs font-medium transition-all duration-150 relative group',
+                isCollapsed && 'justify-center px-0',
                 isActive
                   ? 'bg-[#714B67] text-white shadow-xs font-semibold'
                   : 'text-[#4D3348] hover:bg-[#F3EEF2] hover:text-[#28262D]'
@@ -177,7 +178,7 @@ export function Sidebar() {
     <aside
       className={cn(
         'hidden md:flex flex-col border-r border-[#E4E1E5] bg-white transition-all duration-200 select-none z-30 shrink-0 sticky top-0 h-screen',
-        isCollapsed ? 'w-[72px]' : 'w-64'
+        isCollapsed ? 'w-[116px]' : 'w-64'
       )}
     >
       {/* Brand Header */}

@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { useApp } from '@/lib/context/app-context';
 import {
-  Palmtree,
+  CalendarHeart,
   Calendar,
   Clock,
   Plus,
