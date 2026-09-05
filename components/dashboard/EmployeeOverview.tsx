@@ -47,14 +47,14 @@ export function EmployeeOverview() {
       <div className="relative overflow-hidden rounded-[18px] bg-gradient-to-r from-[#714B67] to-[#4D3348] text-white p-6 md:p-8 shadow-sm">
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 backdrop-blur-xs text-xs font-semibold text-[#FFF6D2] mb-2 border border-white/20">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 backdrop-blur-xs text-xs font-semibold text-[#FFF6D2] mb-3 border border-white/20">
               <Sparkles className="w-3.5 h-3.5 text-[#F4C430]" />
               <span>Employee Self-Service Portal</span>
             </div>
-            <h1 className="font-script text-4xl md:text-5xl font-bold tracking-wide text-white drop-shadow-xs">
-              Welcome back, {currentEmployee.name.split(' ')[0]}!
+            <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">
+              Good day, {currentEmployee.name.split(' ')[0]}!
             </h1>
-            <p className="text-xs md:text-sm text-[#F3EEF2]/80 mt-1.5 max-w-xl leading-relaxed">
+            <p className="text-xs md:text-sm text-[#F3EEF2]/80 mt-1 max-w-xl leading-relaxed">
               {currentEmployee.jobPosition} • {currentEmployee.department} • Scheduled Shift: 09:30 AM – 06:30 PM (IST)
             </p>
           </div>

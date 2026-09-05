@@ -1,5 +1,4 @@
 @import "tailwindcss";
-@import url('https://fonts.googleapis.com/css2?family=Caveat:wght@400;500;600;700&family=Kalam:wght@400;700&display=swap');
 
 @theme {
   --color-plum-primary: #714B67;
@@ -16,12 +15,6 @@
   --color-brand-success: #438A6B;
   --color-brand-warning: #D49525;
   --color-brand-error: #C85A54;
-}
-
-/* Handwritten signature script font matching uploaded reference */
-.font-script {
-  font-family: 'Caveat', 'Kalam', 'Segoe Script', 'Brush Script MT', cursive, sans-serif;
-  letter-spacing: 0.01em;
 }
 
 body {
