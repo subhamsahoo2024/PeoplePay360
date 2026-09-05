@@ -8,6 +8,7 @@ import { createServiceRoleClient, createUserScopedClient } from '@/lib/supabase/
 import type { Employee, Payslip, PayslipLine } from '@/lib/types';
 
 const Id=z.string().uuid();
+const PDF_TEMPLATE_VERSION='v2';
 function bearer(request:NextRequest){const value=request.headers.get('authorization');return value?.startsWith('Bearer ')?value.slice(7):null}
 
 export async function POST(request:NextRequest,{params}:{params:Promise<{id:string}>}) {
@@ -20,7 +21,7 @@ export async function POST(request:NextRequest,{params}:{params:Promise<{id:stri
     const {data:row,error}=await scoped.from('payslips').select('*').eq('id',id).single();
     if(error||!row)return NextResponse.json({error:{code:'NOT_FOUND',message:'Payslip not found'}},{status:404});
 
-    if(row.pdf_storage_path){const signed=await service.storage.from('payslips').createSignedUrl(row.pdf_storage_path,300);if(!signed.error)return NextResponse.json({signedUrl:signed.data.signedUrl,expiresIn:300})}
+    if(row.pdf_storage_path?.includes(`/${PDF_TEMPLATE_VERSION}/`)){const signed=await service.storage.from('payslips').createSignedUrl(row.pdf_storage_path,300);if(!signed.error)return NextResponse.json({signedUrl:signed.data.signedUrl,expiresIn:300})}
     const {data:roles}=await scoped.from('user_company_roles').select('role').eq('company_id',row.company_id).eq('user_id',userData.user.id);
     if(!roles?.some(r=>r.role==='payroll_manager'||r.role==='admin'))return NextResponse.json({error:{code:'FORBIDDEN',message:'Only Payroll Manager or Admin can generate a missing PDF'}},{status:403});
 
@@ -35,7 +36,7 @@ export async function POST(request:NextRequest,{params}:{params:Promise<{id:stri
     const employeeView:Employee={id:employee.id,employeeId:employee.employee_code,name:employee.full_name,avatar:'',email:employee.company_email,phone:employee.phone??'',personalEmail:'',address:'',jobPosition:'',departmentId:employee.department_id??'',departmentName:'',reportingManagerId:employee.manager_id??'',reportingManagerName:'',joiningDate:employee.joining_date,employmentStatus:'active',employeeType:employee.employment_category==='intern'?'intern':'full_time',currentAttendanceStatus:'checked_out',bankAccountMasked:'••••',ifscCode:'',panNumber:'',emergencyContact:{name:'',relation:'',phone:''},activeContractId:row.contract_id??'',workingScheduleId:'',workingScheduleName:'',paidLeaveBalance:0,unpaidLeaveTaken:Number(row.unpaid_leave_days),pendingRequestsCount:0,attendanceException:false,baseSalary:payslip.basicSalary};
     const logo=await readFile(path.join(process.cwd(),'public','logo.png')).then(b=>`data:image/png;base64,${b.toString('base64')}`).catch(()=>undefined);
     const doc=await buildPayslipPdf(payslip,employeeView,{legalName:company.legal_name??company.name,address:company.legal_address??''},logo);
-    const bytes=Buffer.from(doc.output('arraybuffer'));const checksum=createHash('sha256').update(bytes).digest('hex');const storagePath=`${row.company_id}/${row.employee_id}/${row.id}.pdf`;
+    const bytes=Buffer.from(doc.output('arraybuffer'));const checksum=createHash('sha256').update(bytes).digest('hex');const storagePath=`${row.company_id}/${row.employee_id}/${PDF_TEMPLATE_VERSION}/${row.id}.pdf`;
     const upload=await service.storage.from('payslips').upload(storagePath,bytes,{contentType:'application/pdf',upsert:true});if(upload.error)throw upload.error;
     const updated=await service.from('payslips').update({pdf_storage_path:storagePath,pdf_checksum:checksum,generated_at:new Date().toISOString()}).eq('id',row.id);if(updated.error)throw updated.error;
     const signed=await service.storage.from('payslips').createSignedUrl(storagePath,300);if(signed.error)throw signed.error;

@@ -6,8 +6,28 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Eye, EyeOff, LockKeyhole, Mail, AlertCircle, Loader2 } from 'lucide-react';
 import { PeoplePayLogo } from '@/components/brand/PeoplePayLogo';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import type { AppRole } from '@/lib/types';
 import { LoginVisual } from './LoginVisual';
 import { LoginTransition } from './LoginTransition';
+
+function getHighestRole(roles: AppRole[]): AppRole {
+  const priority: AppRole[] = ['admin', 'payroll_manager', 'payroll_user', 'hr_manager', 'employee'];
+  for (const role of priority) {
+    if (roles.includes(role)) return role;
+  }
+  return 'employee';
+}
+
+function getRoleDashboardPath(role: AppRole): string {
+  switch (role) {
+    case 'admin': return '/dashboard?view=admin_overview';
+    case 'payroll_manager': return '/dashboard?view=payroll_dashboard';
+    case 'payroll_user': return '/dashboard?view=payroll_dashboard';
+    case 'hr_manager': return '/dashboard?view=employees';
+    case 'employee':
+    default: return '/dashboard?view=overview';
+  }
+}
 
 export function LoginPage() {
   const router = useRouter();
@@ -95,20 +115,15 @@ export function LoginPage() {
       }
 
       // 6. Redirect to highest-role dashboard
+      setAuthenticated(true);
       const redirect = searchParams.get('redirect');
-      if (redirect && redirect.startsWith('/')) {
-        router.replace(redirect);
-      } else {
-        const highestRole = getHighestRole(userRoles);
-        router.replace(getRoleDashboardPath(highestRole));
-      }
+      const targetPath = (redirect && redirect.startsWith('/')) ? redirect : getRoleDashboardPath(getHighestRole(userRoles));
+      router.prefetch(targetPath);
+      window.setTimeout(() => router.replace(targetPath), 800);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Network error. Please check your connection.');
       setSubmitting(false);
     }
-    setAuthenticated(true);
-    router.prefetch('/dashboard');
-    window.setTimeout(() => router.replace('/dashboard'), 1100);
   };
 
   const inputClass = 'w-full rounded-[10px] border border-[#D9D5D8] bg-white py-3 pl-10 pr-3 text-sm text-[#28262D] outline-none transition focus:border-[#714B67] focus:ring-2 focus:ring-[#714B67]/15';
