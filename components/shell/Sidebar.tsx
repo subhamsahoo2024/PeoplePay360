@@ -18,7 +18,6 @@ import {
   Sliders,
   BarChart3,
   ShieldCheck,
-  Sparkles,
   Shield,
   Radio,
   History,
@@ -28,7 +27,6 @@ import {
   ChevronDown,
   Building,
   FileCheck,
-  Mail,
   Clock,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -101,16 +99,12 @@ export function Sidebar() {
   const payrollNavItems: NavItem[] = [
     { id: 'payroll_dashboard', label: 'Payroll Dashboard', icon: BarChart3 },
     { id: 'payruns', label: 'Payruns', icon: CreditCard },
-    { id: 'bulk_email_dispatch', label: 'Bulk Email Dispatch', icon: Mail },
     { id: 'company_loans', label: 'Loan Deductions', icon: CreditCard },
     { id: 'salary_structures', label: 'Salary Structures', icon: Layers },
     { id: 'salary_rules', label: 'Salary Rules', icon: Sliders },
     { id: 'overtime_policy', label: 'Overtime Policy', icon: Clock },
     ...(currentRole === 'hr_payroll_manager' || currentRole === 'admin'
-      ? [
-          { id: 'readiness', label: 'Readiness Score', icon: ShieldCheck },
-          { id: 'simulator', label: 'Impact Simulator', icon: Sparkles },
-        ]
+      ? [{ id: 'readiness', label: 'Readiness Score', icon: ShieldCheck }]
       : []),
     { id: 'reports', label: 'Payroll Reports', icon: BarChart3 },
   ];

@@ -122,16 +122,23 @@ create policy deduction_deferrals_manager_manage on public.payroll_deduction_def
 
 -- Public-facing clients use these safe projections, not broad sensitive selects.
 create or replace view public.v_employee_leave_summary with (security_invoker=true) as
-select r.employee_id, r.company_id, extract(year from r.start_date)::integer as leave_year,
-  coalesce(sum(r.requested_days) filter (where not t.is_paid and r.status='approved'),0) as approved_unpaid_days,
-  coalesce(sum(r.requested_days) filter (where not t.is_paid and r.status='submitted'),0) as pending_unpaid_days,
-  coalesce(sum(r.estimated_unpaid_deduction) filter (where not t.is_paid and r.status in ('submitted','approved')),0) as estimated_lop,
-  coalesce(sum(p.actual_unpaid_leave_deduction),0) as actual_lop
-from public.leave_requests r join public.leave_types t on t.id=r.leave_type_id
-left join public.payslips p on p.employee_id=r.employee_id and extract(year from p.period_end)=extract(year from r.start_date)
-where r.employee_id=public.current_employee_id(r.company_id)
-   or public.has_company_role(r.company_id,array['hr_manager','payroll_user','payroll_manager','admin']::public.app_role[])
-group by r.employee_id,r.company_id,extract(year from r.start_date);
+with leave_totals as (
+  select r.employee_id,r.company_id,extract(year from r.start_date)::integer as leave_year,
+    coalesce(sum(r.requested_days) filter(where not t.is_paid and r.status='approved'),0) as approved_unpaid_days,
+    coalesce(sum(r.requested_days) filter(where not t.is_paid and r.status='submitted'),0) as pending_unpaid_days,
+    coalesce(sum(r.estimated_unpaid_deduction) filter(where not t.is_paid and r.status in('submitted','approved')),0) as estimated_lop
+  from public.leave_requests r join public.leave_types t on t.id=r.leave_type_id
+  where r.employee_id=public.current_employee_id(r.company_id)
+     or public.has_company_role(r.company_id,array['hr_manager','payroll_user','payroll_manager','admin']::public.app_role[])
+  group by r.employee_id,r.company_id,extract(year from r.start_date)
+), payslip_totals as (
+  select p.employee_id,p.company_id,extract(year from p.period_end)::integer as leave_year,
+    coalesce(sum(p.actual_unpaid_leave_deduction),0) as actual_lop
+  from public.payslips p group by p.employee_id,p.company_id,extract(year from p.period_end)
+)
+select l.employee_id,l.company_id,l.leave_year,l.approved_unpaid_days,l.pending_unpaid_days,l.estimated_lop,
+  coalesce(p.actual_lop,0) as actual_lop
+from leave_totals l left join payslip_totals p using(employee_id,company_id,leave_year);
 
 create or replace view public.v_employee_bank_accounts_masked with (security_invoker=true) as
 select id,company_id,employee_id,account_holder_name,bank_name,account_last4,ifsc_code,is_primary,is_verified,verification_status,updated_at

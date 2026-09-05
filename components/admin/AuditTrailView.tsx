@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { AUDIT_LOGS } from '@/lib/mock-data/devices-and-audit';
 import { formatDateTime } from '@/lib/utils';
+import { downloadCsv } from '@/lib/exports/file-downloads';
 
 export function AuditTrailView() {
   const { addToast } = useApp();
@@ -31,9 +32,10 @@ export function AuditTrailView() {
   });
 
   const handleExport = () => {
+    downloadCsv('PeoplePay360_Audit_Log.csv', ['Timestamp','User','Role','Action','Resource','Category','IP Address','Status'], filteredLogs.map((log) => [log.timestamp,log.userName,log.userRole,log.action,log.resource,log.category,log.ipAddress,log.status]));
     addToast({
       title: 'Audit Trail Exported',
-      description: 'Immutable system audit log exported in encrypted CSV format.',
+      description: `${filteredLogs.length} visible audit records downloaded as CSV.`,
       type: 'success',
     });
   };

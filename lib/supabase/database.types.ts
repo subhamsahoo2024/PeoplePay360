@@ -21,6 +21,8 @@ type EmployeeRow = { id:string; company_id:string; user_id:string|null; employee
 type RoleRow = { id:string; company_id:string; user_id:string; role:AppRole; created_at:string }
 type DepartmentRow = {id:string;company_id:string;name:string;code:string;manager_employee_id:string|null;is_active:boolean;created_at:string;updated_at:string};
 type JobPositionRow = {id:string;company_id:string;department_id:string|null;title:string;code:string;is_active:boolean;created_at:string;updated_at:string};
+type WorkingScheduleRow = {id:string;company_id:string;name:string;timezone:string;grace_minutes:number;is_default:boolean;created_at:string;updated_at:string};
+type WorkingScheduleDayRow = {id:string;schedule_id:string;iso_weekday:number;start_time:string|null;end_time:string|null;break_minutes:number;is_working_day:boolean};
 type BankAccountRow = { id:string; company_id:string; employee_id:string; account_holder_name:string; bank_name:string; account_number_encrypted:string; account_last4:string; ifsc_code:string; is_primary:boolean; verification_status:RequestStatus; is_verified:boolean; verified_by:string|null; verified_at:string|null; created_at:string; updated_at:string }
 type ContractRow = { id:string; company_id:string; employee_id:string; salary_structure_id:string; working_schedule_id:string|null; start_date:string; end_date:string|null; monthly_ctc:number; monthly_gross:number; basic_salary:number; allowance_config:Json; is_active:boolean; status:ContractStatus; approved_at:string|null; approved_by:string|null; terminated_at:string|null; termination_reason:string|null; created_at:string; updated_at:string }
 type LeaveTypeRow = { id:string; company_id:string; name:string; code:string; is_paid:boolean; annual_allocation:number; carry_forward_limit:number; proof_required_after_days:number|null; is_active:boolean; created_at:string; updated_at:string }
@@ -58,6 +60,8 @@ export interface Database {
       user_company_roles: Table<RoleRow>;
       departments: Table<DepartmentRow>;
       job_positions: Table<JobPositionRow>;
+      working_schedules: Table<WorkingScheduleRow>;
+      working_schedule_days: Table<WorkingScheduleDayRow>;
       employee_bank_accounts: Table<BankAccountRow>;
       contracts: Table<ContractRow>;
       leave_types: Table<LeaveTypeRow>;
@@ -97,6 +101,7 @@ export interface Database {
       validate_salary_template_version: { Args:{ p_version_id:string }; Returns:Json };
       prepare_payroll_bank_export: { Args:{ p_pay_run_id:string; p_company_bank_account_id:string; p_template_id:string; p_batch_reference:string; p_payment_date:string }; Returns:Json };
       defer_payslip_deduction: {Args:{p_payslip_line_id:string;p_deferred_amount:number;p_carry_forward_period:string;p_reason:string};Returns:PayslipRow};
+      create_work_schedule: {Args:{p_company_id:string;p_name:string;p_timezone:string;p_effective_from:string;p_effective_to?:string|null;p_assignment_type:'company'|'department'|'employee';p_assignment_id?:string|null;p_is_company_default:boolean;p_days:Json};Returns:string};
       record_attendance_with_location: { Args:{p_company_id:string;p_event_type:string;p_method:string;p_latitude?:number;p_longitude?:number;p_accuracy_meters?:number;p_permission_denied?:boolean;p_device_id?:string}; Returns:Json };
       preview_leave_impact_v2: { Args:{p_company_id:string;p_leave_type_id:string;p_start_date:string;p_end_date:string}; Returns:Json };
       calculate_overtime_entry: { Args:{p_attendance_id:string}; Returns:OvertimeEntryRow };

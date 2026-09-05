@@ -30,7 +30,6 @@ import { PayrunsView } from '@/components/payroll/PayrunsView';
 import { SalaryStructuresView } from '@/components/payroll/SalaryStructuresView';
 import { SalaryRulesView } from '@/components/payroll/SalaryRulesView';
 import { PayrollReadinessView } from '@/components/payroll/PayrollReadinessView';
-import { PayrollSimulatorView } from '@/components/payroll/PayrollSimulatorView';
 import { PayrollReportsView } from '@/components/payroll/PayrollReportsView';
 import { OvertimePolicyView } from '@/components/payroll/OvertimePolicyView';
 
@@ -43,7 +42,6 @@ import { RolePermissionsMatrixView } from '@/components/admin/RolePermissionsMat
 import { MyLoansView } from '@/components/loans/MyLoansView';
 import { EmployeeLoansManagementView } from '@/components/loans/EmployeeLoansManagementView';
 import { MedicalProofsQueueView } from '@/components/medical-proof/MedicalProofsQueueView';
-import { BulkEmailDistributionView } from '@/components/payslips/BulkEmailDistributionView';
 import { PeoplePayLogo } from '@/components/brand/PeoplePayLogo';
 
 function MainContent() {
@@ -90,10 +88,6 @@ function MainContent() {
         return <PayrollDashboardView />;
       case 'payruns':
         return <PayrunsView />;
-      case 'bulk_email_dispatch':
-      case 'send_payslips':
-      case 'email_distribution':
-        return <BulkEmailDistributionView />;
       case 'company_loans':
       case 'employee_loans':
       case 'loan_management':
@@ -107,9 +101,6 @@ function MainContent() {
       case 'readiness':
       case 'payroll_readiness':
         return <PayrollReadinessView />;
-      case 'simulator':
-      case 'payroll_simulator':
-        return <PayrollSimulatorView />;
       case 'reports':
       case 'payroll_reports':
         return <PayrollReportsView />;

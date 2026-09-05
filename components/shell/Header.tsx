@@ -4,7 +4,6 @@ import React, { useState } from 'react';
 import { useApp } from '@/lib/context/app-context';
 import {
   Bell,
-  Search,
   UserCheck,
   UserX,
   Sparkles,
@@ -32,7 +31,6 @@ export function Header({ onToggleMobileMenu }: { onToggleMobileMenu?: () => void
 
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
 
   const unreadCount = notifications.filter((n) => !n.read).length;
   const isCheckedIn = currentEmployee.currentAttendanceStatus === 'checked_in';
@@ -40,8 +38,7 @@ export function Header({ onToggleMobileMenu }: { onToggleMobileMenu?: () => void
   return (
     <>
       <header className="sticky top-0 z-20 h-16 bg-white/95 backdrop-blur-md border-b border-[#E4E1E5] px-4 lg:px-6 flex items-center justify-between gap-4">
-        {/* Left: Mobile Menu Toggle & Search */}
-        <div className="flex items-center gap-3 flex-1 max-w-md">
+        <div className="flex items-center gap-3 flex-1">
           <button
             onClick={onToggleMobileMenu}
             className="md:hidden p-2 rounded-[10px] text-[#74717A] hover:bg-[#F4F3F5] transition-colors"
@@ -49,21 +46,6 @@ export function Header({ onToggleMobileMenu }: { onToggleMobileMenu?: () => void
           >
             <Menu className="w-5 h-5" />
           </button>
-
-          {/* Search bar */}
-          <div className="relative w-full hidden sm:block">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#74717A]" />
-            <input
-              type="text"
-              placeholder="Search employees, payslips, leaves, contracts..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-9 pr-8 py-1.5 text-xs bg-[#F4F3F5] border border-transparent hover:border-[#E4E1E5] focus:border-[#714B67] focus:bg-white rounded-[12px] text-[#28262D] placeholder-[#74717A] transition-all outline-none"
-            />
-            <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[10px] font-mono font-medium text-[#A4879F] bg-white px-1.5 py-0.5 rounded border border-[#E4E1E5] shadow-2xs">
-              ⌘K
-            </span>
-          </div>
         </div>
 
         {/* Right Actions: Attendance, Quick Check In/Out, Notifications, Role Switcher, Profile */}

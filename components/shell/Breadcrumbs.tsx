@@ -37,8 +37,6 @@ export function Breadcrumbs() {
         return 'Payroll Dashboard';
       case 'readiness':
         return 'Payroll Readiness';
-      case 'simulator':
-        return 'Payroll Impact Simulator';
       case 'reports':
         return 'Payroll & Workforce Reports';
       case 'admin_overview':
@@ -63,7 +61,7 @@ export function Breadcrumbs() {
     if (['employees', 'contracts', 'working_schedules', 'approvals', 'workforce_insights'].includes(activeTab)) {
       return 'HR Management';
     }
-    if (['payruns', 'salary_structures', 'salary_rules', 'payroll_dashboard', 'readiness', 'simulator', 'reports'].includes(activeTab)) {
+    if (['payruns', 'salary_structures', 'salary_rules', 'payroll_dashboard', 'readiness', 'reports'].includes(activeTab)) {
       return 'Payroll Operations';
     }
     return 'Enterprise Administration';

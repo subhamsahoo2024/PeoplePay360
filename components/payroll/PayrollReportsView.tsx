@@ -13,6 +13,7 @@ import {
   FileSpreadsheet,
 } from 'lucide-react';
 import { formatINR } from '@/lib/utils';
+import { downloadCsv, downloadReportPdf } from '@/lib/exports/file-downloads';
 
 export function PayrollReportsView() {
   const { payruns, employees, addToast } = useApp();
@@ -25,10 +26,21 @@ export function PayrollReportsView() {
   const totalTDS = Math.round(totalGross * 0.04);
   const totalNet = totalGross - totalEmployeePF - totalPT - totalTDS;
 
-  const handleDownload = (reportName: string) => {
+  const payrollRows = employees.map((employee) => {
+    const gross = employee.baseSalary || 65000;
+    return [employee.employeeId,employee.name,employee.departmentName || employee.department,gross,2000,gross-2000,employee.bankAccountMasked || 'MISSING'];
+  });
+  const handleDownload = (reportName: 'master'|'disbursal'|'pf'|'pt'|'bank') => {
+    if (reportName === 'master' || reportName === 'disbursal') {
+      downloadCsv(reportName === 'master' ? 'PeoplePay360_Master_Payroll_Aug_2026.csv' : 'Disbursal_Register_Aug_2026.csv', ['Employee ID','Employee Name','Department','Gross Salary','Total Deductions','Net Payable','Bank Details'], payrollRows);
+    } else if (reportName === 'bank') {
+      downloadCsv('Salary_NEFT_Batch_Aug_2026.csv', ['Employee ID','Employee Name','Account','IFSC','Net Pay','Payment Reference','Narration'], employees.filter((employee) => employee.bankAccountMasked).map((employee,index) => [employee.employeeId,employee.name,employee.bankAccountMasked,employee.ifscCode,(employee.baseSalary||65000)-2000,`PP360-AUG-${String(index+1).padStart(3,'0')}`,'Salary August 2026']));
+    } else {
+      downloadReportPdf({filename:reportName === 'pf' ? 'EPFO_Form_12A_Aug2026.pdf' : 'PT_Form_5_Aug2026.pdf',title:reportName === 'pf' ? 'EPFO Form 12A - Monthly Return' : 'Professional Tax Form 5',subtitle:'PeoplePay360 · August 2026',headers:['Employee ID','Employee','Department','Contribution'],rows:employees.map((employee) => [employee.employeeId,employee.name,employee.departmentName||employee.department,reportName === 'pf' ? 1800 : 200]),summary:reportName === 'pf' ? [`Employee PF total: INR ${totalEmployeePF}`,`Employer PF total: INR ${totalEmployerPF}`] : [`Professional Tax total: INR ${totalPT}`]});
+    }
     addToast({
       title: 'Report Downloaded',
-      description: `${reportName} generated in PDF/Excel format successfully.`,
+      description: 'The requested file was generated and downloaded successfully.',
       type: 'success',
     });
   };
@@ -46,7 +58,7 @@ export function PayrollReportsView() {
 
         <div className="flex items-center gap-2">
           <button
-            onClick={() => handleDownload('Monthly Master Payroll Register')}
+            onClick={() => handleDownload('master')}
             className="px-4 py-2 bg-[#714B67] hover:bg-[#5C3C53] text-white text-xs font-bold rounded-[10px] shadow-xs flex items-center gap-1.5 transition-colors"
           >
             <Download className="w-4 h-4" />
@@ -88,7 +100,7 @@ export function PayrollReportsView() {
                 <p className="text-xs text-[#74717A]">For Pay Period: August 2026</p>
               </div>
               <button
-                onClick={() => handleDownload('Disbursal_Register_Aug_2026.csv')}
+                onClick={() => handleDownload('disbursal')}
                 className="px-3 py-1.5 rounded-[8px] border border-[#E4E1E5] hover:bg-[#F4F3F5] text-xs font-medium text-[#28262D] flex items-center gap-1.5"
               >
                 <Download className="w-3.5 h-3.5 text-[#714B67]" />
@@ -141,7 +153,7 @@ export function PayrollReportsView() {
                 <p className="text-xs text-[#74717A]">Under Employees&apos; Provident Funds & Misc Provisions Act, 1952</p>
               </div>
               <button
-                onClick={() => handleDownload('EPFO_Form_12A_Aug2026.pdf')}
+                onClick={() => handleDownload('pf')}
                 className="px-3 py-1.5 rounded-[8px] bg-[#714B67] text-white text-xs font-semibold flex items-center gap-1.5"
               >
                 <Download className="w-3.5 h-3.5" />
@@ -187,7 +199,7 @@ export function PayrollReportsView() {
                 <p className="text-xs text-[#74717A]">Karnataka Professional Tax Assessment (Act of 1976)</p>
               </div>
               <button
-                onClick={() => handleDownload('PT_Form_5_Aug2026.pdf')}
+                onClick={() => handleDownload('pt')}
                 className="px-3 py-1.5 rounded-[8px] bg-[#714B67] text-white text-xs font-semibold flex items-center gap-1.5"
               >
                 <Download className="w-3.5 h-3.5" />
@@ -223,11 +235,11 @@ export function PayrollReportsView() {
                 <p className="text-xs text-[#74717A]">RBI NEFT / RTGS Batch Upload File (Standard HDFC / ICICI Format)</p>
               </div>
               <button
-                onClick={() => handleDownload('Salary_NEFT_Batch_Aug2026.txt')}
+                onClick={() => handleDownload('bank')}
                 className="px-3 py-1.5 rounded-[8px] bg-[#438A6B] text-white text-xs font-bold flex items-center gap-1.5 shadow-xs"
               >
                 <Download className="w-3.5 h-3.5" />
-                <span>Generate NEFT Text File</span>
+                <span>Download Bank CSV</span>
               </button>
             </div>
 

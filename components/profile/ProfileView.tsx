@@ -56,27 +56,27 @@ export function ProfileView() {
       <div className="bg-white rounded-[18px] border border-[#E4E1E5] p-6 shadow-xs relative overflow-hidden">
         <div className="absolute top-0 left-0 right-0 h-24 bg-gradient-to-r from-[#714B67] to-[#4D3348]" />
 
-        <div className="relative pt-8 flex flex-col sm:flex-row items-start sm:items-end justify-between gap-4">
-          <div className="flex items-end gap-4">
+        <div className="relative pt-10 flex flex-col sm:flex-row items-start sm:items-end justify-between gap-4 min-w-0">
+          <div className="flex flex-col sm:flex-row items-start sm:items-end gap-3 sm:gap-4 min-w-0 w-full sm:w-auto">
             <img
               src={currentEmployee.avatar}
               alt={currentEmployee.name}
-              className="w-[72px] h-[72px] rounded-full object-cover border-4 border-white shadow-md"
+              className="w-[72px] h-[72px] aspect-square rounded-full object-cover border-4 border-white shadow-md shrink-0"
             />
-            <div className="mb-1">
-              <div className="flex items-center gap-2 flex-wrap">
-                <h2 className="text-xl font-bold text-[#28262D]">{currentEmployee.name}</h2>
+            <div className="mb-1 min-w-0 max-w-full">
+              <div className="flex items-start sm:items-center gap-2 flex-wrap min-w-0">
+                <h2 className="text-lg sm:text-xl font-bold text-[#28262D] leading-tight break-words max-w-full">{currentEmployee.name}</h2>
                 <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-[#F4F3F5] text-[#714B67] border border-[#E4E1E5]">
                   {currentEmployee.jobPosition}
                 </span>
               </div>
-              <p className="text-xs text-[#74717A] mt-0.5">
+              <p className="text-xs text-[#74717A] mt-1 break-words">
                 {currentEmployee.department} • ID: <span className="font-mono font-bold text-[#28262D]">{currentEmployee.employeeId}</span>
               </p>
             </div>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             <StatusBadge status={currentEmployee.currentAttendanceStatus} />
           </div>
         </div>

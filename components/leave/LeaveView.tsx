@@ -14,6 +14,7 @@ import {
   FileText,
   User,
   ChevronDown,
+  Download,
 } from 'lucide-react';
 import { LEAVE_TYPES } from '@/lib/mock-data/leaves';
 import { StatusBadge } from '@/components/shared/StatusBadge';
@@ -22,9 +23,10 @@ import { MedicalProofUploadModal } from '@/components/medical-proof/MedicalProof
 import { formatINR, formatDate, cn } from '@/lib/utils';
 import { medicalProofService } from '@/lib/services/medical-proof-service';
 import { MedicalProof } from '@/lib/types';
+import { downloadCsv } from '@/lib/exports/file-downloads';
 
 export function LeaveView() {
-  const { currentEmployee, leaveRequests, setIsLeaveModalOpen } = useApp();
+  const { currentEmployee, leaveRequests, payslips, setIsLeaveModalOpen } = useApp();
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [expandedRequest, setExpandedRequest] = useState<string | null>(null);
@@ -58,7 +60,7 @@ export function LeaveView() {
   const unpaidRequests = leaveRequests.filter(r => r.employeeId === currentEmployee.id && !r.isPaid);
   const approvedUnpaidDays = unpaidRequests.filter(r => r.status === 'approved').reduce((sum,r)=>sum+r.unpaidDays,0);
   const pendingUnpaidDays = unpaidRequests.filter(r => r.status === 'submitted').reduce((sum,r)=>sum+r.unpaidDays,0);
-  const actualLossOfPay = leaveRequests.filter(r=>r.employeeId===currentEmployee.id&&r.status==='approved').reduce((sum,r)=>sum+r.estimatedDeduction,0);
+  const actualLossOfPay = payslips.filter((p) => p.employeeId === currentEmployee.id).reduce((sum,p)=>sum+p.unpaidLeaveDeduction,0);
 
   return (
     <div className="space-y-6">
@@ -67,10 +69,15 @@ export function LeaveView() {
         <div>
           <h2 className="text-xl font-bold text-[#28262D] tracking-tight">Time Off & Leaves</h2>
           <p className="text-xs text-[#74717A] mt-0.5">
-            Manage your annual leave balance, request time off with live payroll deduction simulation.
+            Manage annual leave balances, request time off, and review payroll deductions.
           </p>
         </div>
 
+        <div className="flex items-center gap-2">
+        <button
+          onClick={() => downloadCsv('leave-requests.csv', ['Leave type', 'Start', 'End', 'Days', 'Paid', 'Status', 'Reason'], myRequests.map((request) => [request.leaveTypeName, request.startDate, request.endDate, request.chargeableWorkingDays, request.isPaid, request.status, request.reason]))}
+          className="px-3.5 py-2 text-xs font-semibold text-[#714B67] bg-white rounded-[10px] border border-[#D8C7D4] flex items-center gap-1.5"
+        ><Download className="w-3.5 h-3.5" /> Export CSV</button>
         <button
           onClick={() => setIsLeaveModalOpen(true)}
           className="px-4 py-2 bg-[#714B67] hover:bg-[#5C3C53] text-white text-xs font-bold rounded-[10px] shadow-xs flex items-center gap-1.5 transition-colors"
@@ -78,6 +85,7 @@ export function LeaveView() {
           <Plus className="w-4 h-4" />
           <span>Apply for Leave</span>
         </button>
+        </div>
       </div>
 
       {/* PENDING MEDICAL PROOF NOTIFICATION CARD */}
