@@ -12,6 +12,7 @@ import {
   Sparkles,
   CreditCard,
   FileCheck,
+  LogOut,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
@@ -23,7 +24,7 @@ interface MobileDrawerProps {
 }
 
 export function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
-  const { activeTab, setActiveTab, currentUser, currentRole, setIsRoleSwitcherOpen } = useApp();
+  const { activeTab, setActiveTab, currentUser, currentRole, setIsRoleSwitcherOpen, signOut } = useApp();
 
   if (!isOpen) return null;
 
@@ -99,7 +100,7 @@ export function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
             })}
           </div>
 
-          <div className="pt-3 border-t border-[#F4F3F5]">
+          <div className="pt-3 border-t border-[#F4F3F5] space-y-2">
             <button
               onClick={() => {
                 setIsRoleSwitcherOpen(true);
@@ -108,7 +109,17 @@ export function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
               className="w-full flex items-center justify-center gap-2 py-2 text-xs font-semibold text-[#9A6B0A] bg-[#FFF6D2] rounded-[10px] border border-[#F8E29E]"
             >
               <Sparkles className="w-3.5 h-3.5" />
-              Switch Demo Role
+              Switch Role / Demo Persona
+            </button>
+            <button
+              onClick={() => {
+                onClose();
+                signOut();
+              }}
+              className="w-full flex items-center justify-center gap-2 py-2 text-xs font-semibold text-[#C85A54] bg-[#FDF1F0] rounded-[10px] border border-[#F6CBC8]"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              Sign Out
             </button>
           </div>
         </motion.div>

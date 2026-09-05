@@ -14,7 +14,7 @@ const initial = {
 type Status = 'loading' | 'ready' | 'saving' | 'done' | 'error';
 type Assignment = {
   id: string; company_id: string; employee_code: string; company_email: string;
-  joining_date: string; employment_category: string;
+  joining_date: string; employment_category?: string;
 };
 
 export default function OnboardingPage() {
@@ -47,7 +47,7 @@ export default function OnboardingPage() {
         fullName: result.data.full_name,
         personalEmail: data.session.user.user_metadata.personal_email ?? '',
       }));
-      setStatus(result.data.onboarding_status === 'pending_verification' ? 'done' : 'ready');
+      setStatus(result.data.status === 'active' ? 'done' : 'ready');
     });
   }, []);
 
@@ -123,7 +123,7 @@ export default function OnboardingPage() {
         <h2 className="font-bold text-sm">Assigned employment information</h2>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-3 text-xs">{[
           ['Employee ID', employee?.employee_code], ['Organization email', employee?.company_email],
-          ['Employment category', employee?.employment_category.replaceAll('_', ' ')],
+          ['Employment category', employee?.employment_category?.replaceAll('_', ' ') ?? 'Standard'],
           ['Joining date', employee?.joining_date], ['Application role', 'Employee self-service'],
           ['Company', 'Assigned organization'],
         ].map(([key, value]) => <div key={key} className="p-3 bg-[#F4F3F5] rounded-[9px]"><span className="block text-[#74717A]">{key}</span><strong>{value}</strong></div>)}</div>

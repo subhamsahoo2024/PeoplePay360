@@ -59,7 +59,7 @@ export function ProfileView() {
         <div className="relative pt-10 flex flex-col sm:flex-row items-start sm:items-end justify-between gap-4 min-w-0">
           <div className="flex flex-col sm:flex-row items-start sm:items-end gap-3 sm:gap-4 min-w-0 w-full sm:w-auto">
             <img
-              src={currentEmployee.avatar}
+              src={currentEmployee.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
               alt={currentEmployee.name}
               className="w-[72px] h-[72px] aspect-square rounded-full object-cover border-4 border-white shadow-md shrink-0"
             />

@@ -17,6 +17,7 @@ export async function uploadFileToStorage(
   options?: { upsert?: boolean; contentType?: string }
 ): Promise<{ path: string | null; error: Error | null }> {
   const supabase = getSupabaseBrowserClient();
+  if (!supabase) return { path: null, error: new Error('Supabase client is not available.') };
   const { data, error } = await supabase.storage.from(bucket).upload(filePath, file, {
     upsert: options?.upsert ?? true,
     contentType: options?.contentType,
@@ -39,6 +40,7 @@ export async function getSignedUrl(
   expiresInSeconds = 3600
 ): Promise<string | null> {
   const supabase = getSupabaseBrowserClient();
+  if (!supabase) return null;
   const { data, error } = await supabase.storage.from(bucket).createSignedUrl(filePath, expiresInSeconds);
 
   if (error || !data?.signedUrl) {
@@ -54,6 +56,7 @@ export async function getSignedUrl(
  */
 export function getPublicUrl(bucket: string, filePath: string): string {
   const supabase = getSupabaseBrowserClient();
+  if (!supabase) return '';
   const { data } = supabase.storage.from(bucket).getPublicUrl(filePath);
   return data.publicUrl;
 }

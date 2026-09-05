@@ -27,6 +27,7 @@ export function Header({ onToggleMobileMenu }: { onToggleMobileMenu?: () => void
     isRoleSwitcherOpen,
     setIsRoleSwitcherOpen,
     setActiveTab,
+    signOut,
   } = useApp();
 
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
@@ -125,7 +126,7 @@ export function Header({ onToggleMobileMenu }: { onToggleMobileMenu?: () => void
               className="flex items-center gap-2 p-1 rounded-full hover:ring-2 hover:ring-[#714B67]/20 transition-all"
             >
               <img
-                src={currentUser.avatar}
+                src={currentUser.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
                 alt={currentUser.name}
                 className="w-8 h-8 rounded-full object-cover border border-[#E4E1E5]"
               />
@@ -168,6 +169,16 @@ export function Header({ onToggleMobileMenu }: { onToggleMobileMenu?: () => void
                   >
                     <Sparkles className="w-3.5 h-3.5 text-[#D49525]" />
                     <span>Switch Role / Demo Persona</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsProfileMenuOpen(false);
+                      signOut();
+                    }}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-[#C85A54] hover:bg-[#FDF1F0] rounded-[10px] transition-colors"
+                  >
+                    <LogOut className="w-3.5 h-3.5 text-[#C85A54]" />
+                    <span>Sign Out</span>
                   </button>
                 </div>
               </div>

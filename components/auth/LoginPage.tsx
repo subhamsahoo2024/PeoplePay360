@@ -72,12 +72,13 @@ export function LoginPage() {
       // 2. Read employee record
       const { data: employee, error: empError } = await client
         .from('employees')
-        .select('id, company_id, status, onboarding_status')
+        .select('id, company_id, status')
         .eq('user_id', user.id)
         .maybeSingle();
 
       if (empError) {
-        setError('Unable to load your employee record. Please contact your administrator.');
+        console.error('LoginPage employee query error:', empError);
+        setError(`Unable to load your employee record: ${empError.message}`);
         setSubmitting(false);
         return;
       }
@@ -89,7 +90,7 @@ export function LoginPage() {
       }
 
       // 3. Check employee status
-      if (employee.status === 'terminated' || employee.status === 'inactive') {
+      if (employee.status === 'terminated' || employee.status === 'suspended') {
         await client.auth.signOut();
         setError('Your account has been suspended. Please contact your administrator.');
         setSubmitting(false);
@@ -97,7 +98,7 @@ export function LoginPage() {
       }
 
       // 4. Check onboarding
-      if (employee.onboarding_status !== 'verified' && employee.onboarding_status !== 'pending_verification') {
+      if (employee.status === 'onboarding') {
         router.replace('/onboarding');
         return;
       }

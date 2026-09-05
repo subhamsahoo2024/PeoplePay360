@@ -55,6 +55,7 @@ export function useRealtimeSubscription(
     if (!companyId) return;
 
     const supabase = getSupabaseBrowserClient();
+    if (!supabase) return;
     const channelName = `realtime:${tableName}:${companyId}`;
 
     const channel: RealtimeChannel = supabase

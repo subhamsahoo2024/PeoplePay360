@@ -313,7 +313,7 @@ export function AttendanceVerificationModal() {
                 {cameraError && (
                   <div className="p-4 text-white/80 text-xs flex flex-col items-center">
                     <img
-                      src={currentEmployee.avatar}
+                      src={currentEmployee.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
                       alt={currentEmployee.name}
                       className="w-24 h-24 rounded-full object-cover border-2 border-white/50 mb-3"
                     />

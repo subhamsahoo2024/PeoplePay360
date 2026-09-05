@@ -28,6 +28,7 @@ import {
   Building,
   FileCheck,
   Clock,
+  LogOut,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SidebarBrand } from '@/components/brand/PeoplePayLogo';
@@ -42,6 +43,7 @@ export function Sidebar() {
     correctionRequests,
     setIsRoleSwitcherOpen,
     currentUser,
+    signOut,
   } = useApp();
 
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -204,19 +206,19 @@ export function Sidebar() {
         {isAdmin && renderNavGroup('Administration & Security', adminNavItems)}
       </div>
 
-      {/* Switch Persona Trigger in Sidebar */}
-      <div className="p-3 border-t border-[#F4F3F5] bg-[#FBFAFB]">
+      {/* Switch Persona & Sign Out Trigger in Sidebar */}
+      <div className="p-3 border-t border-[#F4F3F5] bg-[#FBFAFB] space-y-2">
         <button
           onClick={() => setIsRoleSwitcherOpen(true)}
           className={cn(
             'w-full flex items-center gap-2.5 p-2 rounded-[12px] border border-[#E4E1E5] bg-white hover:bg-[#F3EEF2] hover:border-[#714B67]/30 transition-all text-left shadow-2xs',
             isCollapsed ? 'justify-center p-2' : 'justify-between'
           )}
-          title="Switch Demo Role"
+          title="Switch Role / View Persona"
         >
           <div className="flex items-center gap-2.5 min-w-0">
             <img
-              src={currentUser.avatar}
+              src={currentUser.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
               alt={currentUser.name}
               className="w-7 h-7 rounded-full object-cover border border-[#E4E1E5] shrink-0"
             />
@@ -229,9 +231,21 @@ export function Sidebar() {
           </div>
           {!isCollapsed && (
             <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#FFF6D2] text-[#9A6B0A] border border-[#F8E29E] shrink-0">
-              Demo
+              Role
             </span>
           )}
+        </button>
+
+        <button
+          onClick={signOut}
+          className={cn(
+            'w-full flex items-center gap-2 px-3 py-2 rounded-[12px] text-xs font-bold text-[#C85A54] bg-[#FDF1F0] hover:bg-[#F8E3E1] border border-[#F6CBC8] transition-all',
+            isCollapsed && 'justify-center px-0'
+          )}
+          title="Sign Out"
+        >
+          <LogOut className="w-4 h-4 shrink-0 text-[#C85A54]" />
+          {!isCollapsed && <span>Sign Out</span>}
         </button>
       </div>
     </aside>

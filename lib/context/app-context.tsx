@@ -147,7 +147,7 @@ function buildUserFromSession(session: AuthenticatedSession, roles: AppRole[]): 
     email: session.email,
     role: highestRole,
     roleTitle: roleTitles[highestRole],
-    avatar: '',
+    avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
     employeeId: session.employeeId,
     department: '',
     jobPosition: '',
@@ -229,7 +229,7 @@ export function AppProvider({
         const { data: empData } = await client!.from('employees').select(`
           id, company_id, user_id, employee_code, full_name, company_email, phone,
           department_id, position_id, manager_id, joining_date, exit_date, status,
-          work_location, profile_photo_path, employment_category, onboarding_status
+          work_location, profile_photo_path, employment_category
         `).eq('company_id', companyId);
 
         // Load departments
@@ -246,8 +246,7 @@ export function AppProvider({
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
         const { data: attendanceData } = await client!.from('attendance_records').select('*')
           .eq('company_id', companyId)
-          .gte('work_date', thirtyDaysAgo.toISOString().split('T')[0])
-          .order('work_date', { ascending: false });
+          .order('created_at', { ascending: false });
 
         // Load leave requests
         const { data: leaveData } = await client!.from('leave_requests').select('*')
@@ -256,6 +255,20 @@ export function AppProvider({
 
         // Load leave types
         const { data: leaveTypes } = await client!.from('leave_types').select('*').eq('company_id', companyId);
+
+        // Load payruns
+        const { data: payrunData } = await client!.from('pay_runs').select('*').eq('company_id', companyId).order('created_at', { ascending: false });
+
+        // Load payslips
+        const { data: payslipData } = await client!.from('payslips').select('*').eq('company_id', companyId).order('created_at', { ascending: false });
+
+        // Load salary structures
+        const { data: structData } = await client!.from('salary_structures').select('*').eq('company_id', companyId);
+
+        // Load notifications
+        const notifData = authenticatedSession?.userId
+          ? (await client!.from('notifications').select('*').eq('user_id', authenticatedSession.userId).order('created_at', { ascending: false })).data
+          : null;
 
         if (cancelled) return;
 
@@ -278,16 +291,18 @@ export function AppProvider({
             // Determine today's attendance
             const todayStr = new Date().toISOString().split('T')[0];
             const todayAtt = (attendanceData || []).find(
-              a => a.employee_id === emp.id && a.work_date === todayStr
+              a => a.employee_id === emp.id && (a.work_date === todayStr || a.date === todayStr)
             );
 
             let attStatus: Employee['currentAttendanceStatus'] = 'checked_out';
             let checkInTime: string | null = null;
             let checkOutTime: string | null = null;
             if (todayAtt) {
-              checkInTime = todayAtt.check_in_at ? new Date(todayAtt.check_in_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }) : null;
-              checkOutTime = todayAtt.check_out_at ? new Date(todayAtt.check_out_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }) : null;
-              attStatus = todayAtt.check_out_at ? 'checked_out' : 'checked_in';
+              const cIn = todayAtt.check_in_at || todayAtt.check_in;
+              const cOut = todayAtt.check_out_at || todayAtt.check_out;
+              checkInTime = cIn ? new Date(cIn).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }) : null;
+              checkOutTime = cOut ? new Date(cOut).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }) : null;
+              attStatus = cOut ? 'checked_out' : 'checked_in';
             }
 
             // Check leave
@@ -303,7 +318,7 @@ export function AppProvider({
               id: emp.id,
               employeeId: emp.employee_code,
               name: emp.full_name,
-              avatar: emp.profile_photo_path || '',
+              avatar: emp.profile_photo_path || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
               email: emp.company_email,
               phone: emp.phone || '',
               personalEmail: '',
@@ -315,7 +330,7 @@ export function AppProvider({
               reportingManagerName: mgr?.full_name || '',
               joiningDate: emp.joining_date,
               employmentStatus: emp.status === 'active' ? 'active' : emp.status === 'onboarding' ? 'probation' : emp.status === 'notice' ? 'notice' : 'archived',
-              employeeType: emp.employment_category === 'intern' ? 'intern' : emp.employment_category === 'contractor' ? 'contractor' : 'full_time',
+              employeeType: (emp as any).employment_category === 'intern' ? 'intern' : (emp as any).employment_category === 'contractor' ? 'contractor' : 'full_time',
               currentAttendanceStatus: attStatus,
               todayCheckInTime: checkInTime,
               todayCheckOutTime: checkOutTime,
@@ -334,24 +349,46 @@ export function AppProvider({
             };
           });
           setEmployees(mappedEmployees);
+
+          // Update current user details from DB employee record if matching
+          const currentEmp = mappedEmployees.find(e => e.id === authenticatedSession?.employeeId || e.email === authenticatedSession?.email);
+          if (currentEmp) {
+            setCurrentUserState(prev => ({
+              ...prev,
+              name: currentEmp.name,
+              employeeId: currentEmp.employeeId,
+              department: currentEmp.departmentName,
+              jobPosition: currentEmp.jobPosition,
+            }));
+          }
         }
 
         // Map attendance to frontend format
         if (attendanceData) {
-          const mappedAttendance: AttendanceRecord[] = attendanceData.map(att => ({
-            id: att.id,
-            employeeId: att.employee_id,
-            employeeName: empData?.find(e => e.id === att.employee_id)?.full_name || '',
-            date: att.work_date,
-            checkIn: att.check_in_at ? new Date(att.check_in_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }) : null,
-            checkOut: att.check_out_at ? new Date(att.check_out_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }) : null,
-            workedHours: (att.worked_minutes || 0) / 60,
-            overtimeHours: (att.overtime_minutes || 0) / 60,
-            status: (att.status as any) || 'present',
-            verificationMethod: (att.check_in_method as any) || 'manual',
-            exceptionStatus: 'normal',
-            notes: att.remarks || '',
-          }));
+          const mappedAttendance: AttendanceRecord[] = attendanceData.map(att => {
+            const attDate = att.work_date || att.date || '';
+            const cIn = att.check_in_at || att.check_in;
+            const cOut = att.check_out_at || att.check_out;
+            const wMins = att.worked_minutes ?? (att.total_hours ? att.total_hours * 60 : 0);
+            const oMins = att.overtime_minutes ?? (att.overtime_hours ? att.overtime_hours * 60 : 0);
+            const method = att.check_in_method || att.location || 'manual';
+            const notes = att.notes || att.remarks || '';
+
+            return {
+              id: att.id,
+              employeeId: att.employee_id,
+              employeeName: empData?.find(e => e.id === att.employee_id)?.full_name || '',
+              date: attDate,
+              checkIn: cIn ? new Date(cIn).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }) : null,
+              checkOut: cOut ? new Date(cOut).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }) : null,
+              workedHours: wMins / 60,
+              overtimeHours: oMins / 60,
+              status: (att.status as any) || 'present',
+              verificationMethod: (method as any) || 'manual',
+              exceptionStatus: 'normal',
+              notes: notes,
+            };
+          });
           setAttendanceRecords(mappedAttendance);
         }
 
@@ -393,6 +430,113 @@ export function AppProvider({
           setLeaveRequests(mappedLeaves);
         }
 
+        // Map payruns
+        if (payrunData && payrunData.length > 0) {
+          const mappedPayruns: Payrun[] = payrunData.map(pr => ({
+            id: pr.id,
+            name: pr.name || `Payrun ${pr.period_start}`,
+            reference: `PR-${pr.period_start.replace(/-/g, '')}`,
+            salaryStructureId: '00000000-0000-0000-0000-000000000002',
+            salaryStructureName: 'Standard Executive Salary Structure',
+            startDate: pr.period_start,
+            endDate: pr.period_end,
+            status: pr.status === 'finalized' ? 'paid' : (pr.status as any) || 'draft',
+            employeeCount: pr.employee_count || pr.total_employees || 0,
+            grossTotal: Number(pr.total_gross || 0),
+            totalDeductions: Number(pr.total_deductions || 0),
+            netTotal: Number(pr.total_net || 0),
+            warningCount: 0,
+            readinessScore: Number(pr.readiness_score || 100),
+            createdAt: pr.created_at,
+          }));
+          setPayruns(mappedPayruns);
+          if (mappedPayruns.length > 0) {
+            setSelectedPayrun(mappedPayruns[0]);
+          }
+        }
+
+        // Map payslips
+        if (payslipData && payslipData.length > 0) {
+          const mappedPayslips: Payslip[] = payslipData.map(ps => {
+            const emp = empData?.find(e => e.id === ps.employee_id);
+            const expl = (ps.explanation as any) || {};
+            return {
+              id: ps.id,
+              payrunId: ps.pay_run_id,
+              payrunName: 'Monthly Payrun',
+              employeeId: ps.employee_id,
+              employeeName: emp?.full_name || '',
+              employeeCode: emp?.employee_code || '',
+              department: '',
+              jobPosition: '',
+              contractId: ps.contract_id || '',
+              salaryStructureId: '00000000-0000-0000-0000-000000000002',
+              salaryStructureName: 'Standard Executive Salary Structure',
+              payrollPeriod: `${ps.period_start} to ${ps.period_end}`,
+              workedDays: ps.paid_days,
+              paidLeaveDays: 0,
+              unpaidLeaveDays: ps.unpaid_leave_days,
+              basicSalary: Number(expl.basic || 50000),
+              hra: Number(expl.hra || 25000),
+              travelAllowance: 0,
+              otherAllowances: Number(expl.special || 25000),
+              grossSalary: Number(ps.gross_amount),
+              bonus: 0,
+              appraisalAdjustment: 0,
+              overtime: Number(ps.overtime_amount || 0),
+              grossTotal: Number(ps.gross_amount),
+              unpaidLeaveDeduction: Number(ps.actual_unpaid_leave_deduction || 0),
+              paidLeaveAdjustment: 0,
+              pfDeduction: Number(expl.pf || 6000),
+              professionalTax: 200,
+              incomeTaxTds: Number(expl.tax || 5800),
+              taxDeduction: Number(expl.tax || 5800),
+              loanEmiDeduction: 0,
+              otherDeductions: 0,
+              totalDeductions: Number(ps.deduction_amount),
+              netSalary: Number(ps.net_amount),
+              netTotal: Number(ps.net_amount),
+              employerPfContribution: Number(ps.employer_contribution || 6000),
+              employerEsiContribution: 0,
+              status: ps.status as any,
+              generatedAt: ps.generated_at || ps.created_at,
+              paidAt: ps.finalized_at || undefined,
+              warnings: [],
+              lines: [],
+            };
+          });
+          setPayslips(mappedPayslips);
+          if (mappedPayslips.length > 0) {
+            setSelectedPayslip(mappedPayslips[0]);
+          }
+        }
+
+        // Map salary structures
+        if (structData && structData.length > 0) {
+          const mappedStructs: SalaryStructure[] = structData.map(st => ({
+            id: st.id,
+            name: st.name,
+            code: st.code,
+            isActive: st.is_active,
+            description: st.description || '',
+            ruleIds: [],
+          }));
+          setSalaryStructures(mappedStructs);
+        }
+
+        // Map notifications
+        if (notifData && notifData.length > 0) {
+          const mappedNotifs: AppNotification[] = notifData.map(n => ({
+            id: n.id,
+            title: n.title,
+            message: n.message,
+            type: (n.type as any) || 'system',
+            timestamp: n.created_at,
+            read: !!n.read_at,
+          }));
+          setNotifications(mappedNotifs);
+        }
+
         setDataLoading(false);
       } catch (err) {
         console.error('Failed to load Supabase data, falling back to mock:', err);
@@ -409,9 +553,9 @@ export function AppProvider({
     if (!client) return;
     client.auth.getSession().then(async ({ data }) => {
       if (!data.session) return;
-      const employee = await client.from('employees').select('onboarding_status')
+      const employee = await client.from('employees').select('status')
         .eq('user_id', data.session.user.id).maybeSingle();
-      if (employee.data && employee.data.onboarding_status !== 'verified' && window.location.pathname !== '/onboarding') {
+      if (employee.data && employee.data.status === 'onboarding' && window.location.pathname !== '/onboarding') {
         window.location.assign('/onboarding');
       }
     });
@@ -494,6 +638,19 @@ export function AppProvider({
 
   const removeToast = (id: string) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
+  };
+
+  const handleSignOut = async () => {
+    try {
+      const supabase = getSupabaseBrowserClient();
+      if (supabase) {
+        await supabase.auth.signOut();
+      }
+    } catch (err) {
+      console.error('Sign out error:', err);
+    } finally {
+      window.location.assign('/');
+    }
   };
 
   const setCurrentUser = (user: User) => {
@@ -932,13 +1089,6 @@ export function AppProvider({
   const clearAllNotifications = () => {
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
     addToast('info', 'Notifications Cleared', 'All notices marked as read.');
-  };
-
-  const handleSignOut = async () => {
-    if (client) {
-      await client.auth.signOut();
-    }
-    window.location.assign('/');
   };
 
   return (

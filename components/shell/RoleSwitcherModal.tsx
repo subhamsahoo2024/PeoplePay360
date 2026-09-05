@@ -117,7 +117,7 @@ export function RoleSwitcherModal({ isOpen, onClose }: RoleSwitcherModalProps) {
                   {/* Avatar with role icon badge */}
                   <div className="relative shrink-0">
                     <img
-                      src={user.avatar}
+                      src={user.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
                       alt={user.name}
                       className="w-12 h-12 rounded-full object-cover border border-[#E4E1E5]"
                     />

@@ -128,7 +128,7 @@ export function EmployeesDirectoryView() {
               <div className="flex items-start justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <img
-                    src={emp.avatar}
+                    src={emp.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
                     alt={emp.name}
                     className="w-10 h-10 rounded-full object-cover border border-[#E4E1E5]"
                   />
@@ -188,7 +188,7 @@ export function EmployeesDirectoryView() {
                 <div className="p-6 border-b border-[#F4F3F5] bg-[#FBFAFB] flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <img
-                      src={inspectEmployee.avatar}
+                      src={inspectEmployee.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
                       alt={inspectEmployee.name}
                       className="w-14 h-14 rounded-full object-cover border-2 border-white shadow-xs"
                     />

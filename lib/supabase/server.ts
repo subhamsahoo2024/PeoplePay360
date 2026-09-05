@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { createServerClient } from '@supabase/ssr';
+import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 import type { Database, AppRole } from './database.types';
 
@@ -43,7 +44,6 @@ export async function createServerSupabaseClient() {
  * Prefer createServerSupabaseClient() for new code.
  */
 export function createUserScopedClient(accessToken: string) {
-  const { createClient } = require('@supabase/supabase-js');
   return createClient<Database>(
     required('NEXT_PUBLIC_SUPABASE_URL', process.env.NEXT_PUBLIC_SUPABASE_URL),
     required('NEXT_PUBLIC_SUPABASE_ANON_KEY', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
@@ -55,7 +55,6 @@ export function createUserScopedClient(accessToken: string) {
  * Service-role client for admin operations. NEVER import from client components.
  */
 export function createServiceRoleClient() {
-  const { createClient } = require('@supabase/supabase-js');
   const key = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
   return createClient<Database>(
     required('NEXT_PUBLIC_SUPABASE_URL', process.env.NEXT_PUBLIC_SUPABASE_URL),

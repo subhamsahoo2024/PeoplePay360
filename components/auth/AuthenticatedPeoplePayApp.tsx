@@ -38,19 +38,19 @@ export function AuthenticatedPeoplePayApp() {
         }
 
         // Get employee record
-        const { data: employee } = await client
+        const { data: employee, error: empErr } = await client
           .from('employees')
-          .select('id, company_id, full_name, status, onboarding_status, employee_code')
+          .select('id, company_id, full_name, status, employee_code')
           .eq('user_id', user.id)
           .maybeSingle();
 
-        if (!employee) {
+        if (empErr || !employee) {
           router.replace('/');
           return;
         }
 
         // Check onboarding
-        if (employee.onboarding_status !== 'verified' && employee.onboarding_status !== 'pending_verification') {
+        if (employee.status === 'onboarding') {
           router.replace('/onboarding');
           return;
         }
@@ -72,7 +72,7 @@ export function AuthenticatedPeoplePayApp() {
           companyId: employee.company_id,
           fullName: employee.full_name,
           roles,
-          onboardingStatus: employee.onboarding_status,
+          onboardingStatus: employee.status,
         });
 
         // Apply view parameter from URL if present
