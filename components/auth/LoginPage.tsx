@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation';
 import { Eye, EyeOff, LockKeyhole, Mail } from 'lucide-react';
 import { PeoplePayLogo } from '@/components/brand/PeoplePayLogo';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { LoginVisual } from './LoginVisual';
+import { LoginTransition } from './LoginTransition';
 
 export function LoginPage() {
   const router = useRouter();
@@ -14,6 +16,7 @@ export function LoginPage() {
   const [showPassword, setShowPassword] = React.useState(false);
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState('');
+  const [authenticated, setAuthenticated] = React.useState(false);
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -30,14 +33,20 @@ export function LoginPage() {
       setSubmitting(false);
       return;
     }
-    router.replace('/dashboard');
+    setAuthenticated(true);
+    router.prefetch('/dashboard');
+    window.setTimeout(() => router.replace('/dashboard'), 1100);
   };
 
   const inputClass = 'w-full rounded-[10px] border border-[#D9D5D8] bg-white py-3 pl-10 pr-3 text-sm text-[#28262D] outline-none transition focus:border-[#714B67] focus:ring-2 focus:ring-[#714B67]/15';
 
+  if (authenticated) return <LoginTransition />;
+
   return (
-    <main className="min-h-screen bg-[#F7F5F6] px-4 py-10 sm:grid sm:place-items-center">
-      <section className="mx-auto w-full max-w-md rounded-[18px] border border-[#E4E1E5] bg-white p-6 shadow-sm sm:p-8" aria-labelledby="login-title">
+    <main className="grid min-h-screen bg-[#F7F5F6] lg:grid-cols-[minmax(0,1.08fr)_minmax(420px,0.92fr)]">
+      <LoginVisual />
+      <div className="flex min-h-screen items-center justify-center px-4 py-10 sm:px-8">
+      <section className="w-full max-w-md rounded-[18px] border border-[#E4E1E5] bg-white p-6 shadow-sm sm:p-8" aria-labelledby="login-title">
         <div className="mb-7 flex items-center gap-3">
           <PeoplePayLogo size={44} />
           <div>
@@ -87,6 +96,7 @@ export function LoginPage() {
         </Link>
         <p className="mt-3 text-center text-xs text-[#74717A]">Demo Mode uses sample data and does not require an account.</p>
       </section>
+      </div>
     </main>
   );
 }
