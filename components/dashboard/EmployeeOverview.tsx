@@ -5,7 +5,7 @@ import { useApp } from '@/lib/context/app-context';
 import {
   UserCheck,
   UserX,
-  Palmtree,
+  CalendarHeart,
   CreditCard,
   Calendar,
   Clock,
@@ -78,7 +78,7 @@ export function EmployeeOverview() {
               onClick={() => setIsLeaveModalOpen(true)}
               className="px-4 py-2.5 rounded-[12px] bg-white/15 hover:bg-white/25 text-white text-xs font-semibold backdrop-blur-xs transition-colors border border-white/20 flex items-center gap-2"
             >
-              <Palmtree className="w-4 h-4" />
+              <CalendarHeart className="w-4 h-4" />
               <span>Request Leave</span>
             </button>
           </div>
@@ -106,7 +106,7 @@ export function EmployeeOverview() {
           title="Casual Leave Balance"
           value="5 / 12 Days"
           subtitle="Remaining for current calendar year"
-          icon={<Palmtree className="w-5 h-5 text-[#B45309]" />}
+          icon={<CalendarHeart className="w-5 h-5 text-[#B45309]" />}
           iconVariant="leave"
           actionText="View Leaves"
           onClick={() => setActiveTab('leave')}
@@ -167,7 +167,7 @@ export function EmployeeOverview() {
             >
               <div className="flex items-center gap-3">
                 <SemanticIconTile
-                  icon={<Palmtree className="w-4 h-4" />}
+                  icon={<CalendarHeart className="w-4 h-4" />}
                   variant="leave"
                   size="table"
                 />

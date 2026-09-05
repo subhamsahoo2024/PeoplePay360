@@ -49,7 +49,7 @@ export function KPICard({
       id={id}
       onClick={onClick}
       className={cn(
-        'relative p-5 rounded-[16px] border transition-all duration-200 bg-white',
+        'relative h-full p-5 rounded-[16px] border transition-all duration-200 bg-white flex flex-col',
         isClickable && 'cursor-pointer hover:shadow-md hover:-translate-y-0.5 active:translate-y-0',
         highlight && 'border-[#714B67]/30 bg-gradient-to-br from-white via-[#FBFAFB] to-[#F3EEF2]/50 shadow-sm',
         warning && 'border-[#F4C430]/60 bg-[#FFFDF5]',
@@ -75,8 +75,8 @@ export function KPICard({
       </div>
 
       {(subtitle || trend || actionText) && (
-        <div className="mt-3 pt-3 border-t border-[#F4F3F5] flex items-center justify-between text-xs text-[#74717A]">
-          {subtitle && <span>{subtitle}</span>}
+        <div className="mt-auto pt-3 border-t border-[#F4F3F5] flex flex-col gap-2 text-xs text-[#74717A]">
+          {subtitle && <span className="block leading-relaxed">{subtitle}</span>}
           {trend && (
             <span
               className={cn(
@@ -93,7 +93,7 @@ export function KPICard({
             </span>
           )}
           {actionText && (
-            <span className="font-medium text-[#714B67] hover:underline ml-auto flex items-center gap-1">
+            <span className="self-end whitespace-nowrap font-medium text-[#714B67] hover:underline flex items-center gap-1">
               {actionText} →
             </span>
           )}

@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { useApp } from '@/lib/context/app-context';
 import {
   CheckSquare,
-  Palmtree,
+  CalendarHeart,
   User,
   Clock,
   Check,
@@ -65,7 +65,7 @@ export function ApprovalsCenterView() {
               : 'text-[#74717A] hover:bg-[#F4F3F5] hover:text-[#28262D]'
           )}
         >
-          <Palmtree className="w-4 h-4" />
+          <CalendarHeart className="w-4 h-4" />
           <span>Leave Applications</span>
           {pendingLeaves.length > 0 && (
             <span className="px-1.5 py-0.2 rounded-full bg-white text-[#714B67] text-[10px] font-bold">

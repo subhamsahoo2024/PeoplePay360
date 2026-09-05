@@ -10,7 +10,7 @@ import {
   ShieldCheck,
   UserCheck,
   UserX,
-  Palmtree,
+  CalendarHeart,
 } from 'lucide-react';
 
 interface StatusBadgeProps {
@@ -77,7 +77,7 @@ export function StatusBadge({ status, className, size = 'md' }: StatusBadgeProps
     case 'on_leave':
     case 'leave':
       bg = 'bg-[#F1ECF5] text-[#714B67] border-[#DBCFE1]';
-      icon = <Palmtree className="w-3.5 h-3.5" />;
+      icon = <CalendarHeart className="w-3.5 h-3.5" />;
       text = 'On Leave';
       break;
 

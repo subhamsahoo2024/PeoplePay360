@@ -18,56 +18,13 @@ interface LogoProps {
  */
 export function PeoplePayLogo({ size = 36, className }: LogoProps) {
   return (
-    <svg
+    <img
+      src="/logo.png"
+      alt="PeoplePay360 Logo"
       width={size}
       height={size}
-      viewBox="0 0 36 36"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      className={cn('shrink-0 select-none transition-transform duration-150', className)}
-      aria-label="PeoplePay360 Logo"
-    >
-      {/* Outer rounded container */}
-      <rect
-        width="36"
-        height="36"
-        rx="10"
-        fill="#714B67"
-      />
-
-      {/* Subtle depth border */}
-      <rect
-        x="0.5"
-        y="0.5"
-        width="35"
-        height="35"
-        rx="9.5"
-        stroke="#4D3348"
-        strokeOpacity="0.4"
-      />
-
-      {/* Orbit connector arc representing 360 connectivity */}
-      <path
-        d="M 12 25 L 12 11 Q 12 9 14 9 L 20 9 Q 25 9 25 14 Q 25 19 20 19 L 12 19"
-        stroke="#F4C430"
-        strokeWidth="2.75"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-
-      {/* 3 Connected Human Figure Dots: Employees, HR, and Payroll */}
-      {/* Node 1: Employee (Bottom-left base) */}
-      <circle cx="12" cy="25" r="2.75" fill="#FFFFFF" />
-
-      {/* Node 2: HR (Top-left anchor) */}
-      <circle cx="12" cy="11" r="2.75" fill="#FFFFFF" />
-
-      {/* Node 3: Payroll (Loop crest / apex) */}
-      <circle cx="21" cy="14" r="3.25" fill="#F4C430" />
-
-      {/* Center dot inside Payroll representing precision calculation */}
-      <circle cx="21" cy="14" r="1.25" fill="#28262D" />
-    </svg>
+      className={cn('shrink-0 select-none object-contain transition-transform duration-150', className)}
+    />
   );
 }
 
