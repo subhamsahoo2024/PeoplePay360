@@ -17,12 +17,32 @@ import {
 import { LEAVE_TYPES } from '@/lib/mock-data/leaves';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { LeaveRequestModal } from './LeaveRequestModal';
+import { MedicalProofUploadModal } from '@/components/medical-proof/MedicalProofUploadModal';
 import { formatINR, formatDate, cn } from '@/lib/utils';
+import { medicalProofService } from '@/lib/services/medical-proof-service';
+import { MedicalProof } from '@/lib/types';
 
 export function LeaveView() {
   const { currentEmployee, leaveRequests, setIsLeaveModalOpen } = useApp();
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
+
+  // Medical proof state
+  const [medicalProofs, setMedicalProofs] = useState<MedicalProof[]>([]);
+  const [selectedProofToUpload, setSelectedProofToUpload] = useState<MedicalProof | null>(null);
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+
+  const loadMedicalProofs = React.useCallback(() => {
+    medicalProofService.getProofsForEmployee(currentEmployee.id).then(setMedicalProofs);
+  }, [currentEmployee.id]);
+
+  React.useEffect(() => {
+    loadMedicalProofs();
+  }, [loadMedicalProofs]);
+
+  const pendingProof = medicalProofs.find(
+    (p) => p.status === 'pending_upload' || p.status === 'resubmission_required' || p.status === 'overdue'
+  );
 
   // Filter requests for current employee
   const myRequests = leaveRequests.filter((r) => {
@@ -53,6 +73,47 @@ export function LeaveView() {
           <span>Apply for Leave</span>
         </button>
       </div>
+
+      {/* PENDING MEDICAL PROOF NOTIFICATION CARD */}
+      {pendingProof && (
+        <div className="p-4 rounded-[16px] bg-[#FFF8E1] border border-[#FBE6A2] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
+          <div className="flex items-start gap-3">
+            <div className="w-9 h-9 rounded-[10px] bg-[#FEF3C7] text-[#92400E] flex items-center justify-center shrink-0">
+              <AlertCircle className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h4 className="text-xs font-bold text-[#92400E]">
+                  Supporting Medical Certificate Required ({pendingProof.totalDays} Days Leave)
+                </h4>
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-[#FEF3C7] text-[#B45309] font-bold uppercase">
+                  {pendingProof.status.replace(/_/g, ' ')}
+                </span>
+              </div>
+              <p className="text-xs text-[#28262D] mt-0.5">
+                Leave dates: {formatDate(pendingProof.leaveStartDate)} – {formatDate(pendingProof.leaveEndDate)}.
+                Submission deadline: <span className="font-bold text-[#92400E]">{formatDate(pendingProof.submissionDeadline)}</span>.
+              </p>
+              {pendingProof.hrRemarks && (
+                <p className="text-[11px] text-[#991B1B] font-medium mt-1">
+                  HR Note: {pendingProof.hrRemarks}
+                </p>
+              )}
+            </div>
+          </div>
+
+          <button
+            onClick={() => {
+              setSelectedProofToUpload(pendingProof);
+              setIsUploadModalOpen(true);
+            }}
+            className="px-4 py-2 bg-[#714B67] hover:bg-[#5E3D55] text-white text-xs font-bold rounded-[10px] shadow-xs flex items-center gap-1.5 shrink-0"
+          >
+            <FileText className="w-4 h-4" />
+            <span>Upload Certificate</span>
+          </button>
+        </div>
+      )}
 
       {/* Leave Balances Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -221,6 +282,16 @@ export function LeaveView() {
 
       {/* Leave Request Modal */}
       <LeaveRequestModal />
+
+      {/* Medical Proof Upload Modal */}
+      {selectedProofToUpload && (
+        <MedicalProofUploadModal
+          proof={selectedProofToUpload}
+          isOpen={isUploadModalOpen}
+          onClose={() => setIsUploadModalOpen(false)}
+          onSuccess={loadMedicalProofs}
+        />
+      )}
     </div>
   );
 }

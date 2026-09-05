@@ -19,6 +19,8 @@ import {
 } from 'lucide-react';
 import { formatINR, formatDate } from '@/lib/utils';
 import { StatusBadge } from '@/components/shared/StatusBadge';
+import { StatutoryContributionModal } from '@/components/payroll/StatutoryContributionModal';
+import { Lock } from 'lucide-react';
 
 export function SalaryBreakdownDrawer() {
   const {
@@ -28,6 +30,8 @@ export function SalaryBreakdownDrawer() {
     currentEmployee,
     setIsExplainSalaryDiffOpen,
   } = useApp();
+
+  const [isPFModalOpen, setIsPFModalOpen] = React.useState(false);
 
   if (!isSalaryDrawerOpen || !selectedPayslip) return null;
 
@@ -220,17 +224,44 @@ export function SalaryBreakdownDrawer() {
                   </div>
 
                   <div className="divide-y divide-[#F4F3F5] p-1">
-                    {deductionsList.map((d, idx) => (
-                      <div key={idx} className="p-2.5 flex items-center justify-between">
-                        <div>
-                          <p className="font-medium text-[#28262D]">{d.ruleName}</p>
-                          <p className="text-[10px] font-mono text-[#A4879F]">{d.ruleCode}</p>
+                    {deductionsList.map((d, idx) => {
+                      const isPF = d.ruleCode === 'PF_EMP' || d.ruleName.includes('Provident Fund') || d.ruleCode === 'PF';
+                      return (
+                        <div key={idx} className="p-2.5 flex items-center justify-between">
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <p className="font-medium text-[#28262D]">{d.ruleName}</p>
+                              {isPF && (
+                                <button
+                                  type="button"
+                                  onClick={() => setIsPFModalOpen(true)}
+                                  className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-[6px] bg-[#FFF6D2] text-[#9A6B0A] border border-[#F8E29E] text-[9px] font-bold hover:bg-[#FBE6A2] transition-colors"
+                                  title="Statutory Rule Locked (EPF Act 1952) - Click for calculation details"
+                                >
+                                  <Lock className="w-2.5 h-2.5" />
+                                  <span>Statutory Rule Locked</span>
+                                </button>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <span className="text-[10px] font-mono text-[#A4879F]">{d.ruleCode}</span>
+                              {isPF && (
+                                <button
+                                  type="button"
+                                  onClick={() => setIsPFModalOpen(true)}
+                                  className="text-[10px] text-[#714B67] hover:underline flex items-center gap-0.5 font-medium"
+                                >
+                                  <Info className="w-2.5 h-2.5" /> View statutory formula
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                          <span className="font-semibold text-[#C85A54] tabular-nums">
+                            -{formatINR(d.amount)}
+                          </span>
                         </div>
-                        <span className="font-semibold text-[#C85A54] tabular-nums">
-                          -{formatINR(d.amount)}
-                        </span>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
 
                   <div className="p-3 bg-[#FBFAFB] border-t border-[#E4E1E5] flex items-center justify-between font-bold text-[#28262D]">
@@ -311,6 +342,13 @@ export function SalaryBreakdownDrawer() {
           </motion.div>
         </div>
       </div>
+
+      {/* Statutory Contribution Explanation Modal */}
+      <StatutoryContributionModal
+        basicSalary={ps.basicSalary || 35000}
+        isOpen={isPFModalOpen}
+        onClose={() => setIsPFModalOpen(false)}
+      />
     </AnimatePresence>
   );
 }

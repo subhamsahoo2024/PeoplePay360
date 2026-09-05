@@ -38,6 +38,13 @@ import { BiometricDevicesView } from '@/components/admin/BiometricDevicesView';
 import { AuditTrailView } from '@/components/admin/AuditTrailView';
 import { RolePermissionsMatrixView } from '@/components/admin/RolePermissionsMatrixView';
 
+// New Enterprise Modules
+import { MyLoansView } from '@/components/loans/MyLoansView';
+import { EmployeeLoansManagementView } from '@/components/loans/EmployeeLoansManagementView';
+import { MedicalProofsQueueView } from '@/components/medical-proof/MedicalProofsQueueView';
+import { BulkEmailDistributionView } from '@/components/payslips/BulkEmailDistributionView';
+import { PeoplePayLogo } from '@/components/brand/PeoplePayLogo';
+
 function MainContent() {
   const { activeTab } = useApp();
 
@@ -52,6 +59,9 @@ function MainContent() {
         return <AttendanceView />;
       case 'leave':
         return <LeaveView />;
+      case 'my_loans':
+      case 'loans':
+        return <MyLoansView />;
       case 'payslips':
         return <EmployeePayslipsView />;
       case 'profile':
@@ -65,6 +75,9 @@ function MainContent() {
       case 'working_schedules':
       case 'schedules':
         return <WorkingSchedulesView />;
+      case 'medical_proofs':
+      case 'leave_proofs':
+        return <MedicalProofsQueueView />;
       case 'approvals':
         return <ApprovalsCenterView />;
       case 'workforce_insights':
@@ -76,6 +89,14 @@ function MainContent() {
         return <PayrollDashboardView />;
       case 'payruns':
         return <PayrunsView />;
+      case 'bulk_email_dispatch':
+      case 'send_payslips':
+      case 'email_distribution':
+        return <BulkEmailDistributionView />;
+      case 'company_loans':
+      case 'employee_loans':
+      case 'loan_management':
+        return <EmployeeLoansManagementView />;
       case 'salary_structures':
         return <SalaryStructuresView />;
       case 'salary_rules':
@@ -151,9 +172,7 @@ export default function Home() {
     return (
       <div className="min-h-screen bg-[#FBFAFB] text-[#28262D] flex items-center justify-center p-6">
         <div className="flex flex-col items-center gap-4 text-center">
-          <div className="w-12 h-12 rounded-[14px] bg-[#714B67] text-white flex items-center justify-center font-bold text-xl shadow-md">
-            P
-          </div>
+          <PeoplePayLogo size={48} />
           <div>
             <h1 className="text-base font-bold text-[#28262D]">PeoplePay360</h1>
             <p className="text-xs text-[#74717A] mt-1">Initializing enterprise workspace...</p>

@@ -67,6 +67,7 @@ interface AppContextType {
     title?: string,
     message?: string
   ) => void;
+  showToast: (type: 'success' | 'warning' | 'error' | 'info', titleOrMessage: string, message?: string) => void;
   removeToast: (id: string) => void;
 
   // Modal controls
@@ -175,6 +176,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
     }, 4500);
+  };
+
+  const showToast = (type: 'success' | 'warning' | 'error' | 'info', titleOrMessage: string, message?: string) => {
+    if (message) {
+      addToast(type, titleOrMessage, message);
+    } else {
+      addToast(type, type === 'error' ? 'Error' : type === 'warning' ? 'Warning' : 'Notification', titleOrMessage);
+    }
   };
 
   const removeToast = (id: string) => {
@@ -521,6 +530,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         biometricDevices,
         toasts,
         addToast,
+        showToast,
         removeToast,
         isCheckInModalOpen,
         setIsCheckInModalOpen,

@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { SalaryRule } from '@/lib/types';
 import { motion, AnimatePresence } from 'motion/react';
+import { StatutoryContributionModal } from './StatutoryContributionModal';
 
 export function SalaryRulesView() {
   const { salaryRules, addSalaryRule, updateSalaryRule, currentRole } = useApp();
@@ -23,6 +24,7 @@ export function SalaryRulesView() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [formData, setFormData] = useState<Partial<SalaryRule>>({});
   const [formulaTestResult, setFormulaTestResult] = useState<string | null>(null);
+  const [isPFModalOpen, setIsPFModalOpen] = useState(false);
 
   const handleEdit = (rule: SalaryRule) => {
     if (isReadOnly) return;
@@ -71,7 +73,7 @@ export function SalaryRulesView() {
         percentage: formData.percentage,
         baseRuleCode: formData.baseRuleCode,
         formula: formData.formula,
-        description: formData.description || '',
+        description: formData.description,
         active: true,
       });
     }
@@ -130,10 +132,25 @@ export function SalaryRulesView() {
                   displayCalc = 'Formula Driven';
                 }
 
+                const isPFRule = rule.code === 'PF_EMP' || rule.code === 'PF' || rule.name.includes('Provident Fund');
+
                 return (
                   <tr key={rule.id} className="hover:bg-[#FBFAFB] transition-colors">
                     <td className="py-3.5 px-4 font-semibold text-[#28262D]">
-                      {rule.name}
+                      <div className="flex items-center gap-2">
+                        <span>{rule.name}</span>
+                        {isPFRule && (
+                          <button
+                            type="button"
+                            onClick={() => setIsPFModalOpen(true)}
+                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#FFF6D2] text-[#9A6B0A] border border-[#F8E29E] text-[10px] font-bold hover:bg-[#FBE6A2] transition-colors"
+                            title="Statutory Rule Locked (EPF Act 1952) - Click to view formula"
+                          >
+                            <Lock className="w-3 h-3" />
+                            <span>Statutory Rule Locked (EPF Act 1952)</span>
+                          </button>
+                        )}
+                      </div>
                       {rule.description && (
                         <span className="text-[11px] text-[#74717A] block font-normal mt-0.5">
                           {rule.description}
@@ -149,10 +166,18 @@ export function SalaryRulesView() {
                       </span>
                     </td>
                     <td className="py-3.5 px-4 font-medium text-[#28262D]">
-                      {displayCalc}
+                      {isPFRule ? 'Statutory (Min(Basic, 15k) * 12%)' : displayCalc}
                     </td>
                     <td className="py-3.5 px-4 font-mono text-[11px] text-[#74717A] max-w-xs truncate">
-                      {rule.formula ? (
+                      {isPFRule ? (
+                        <button
+                          type="button"
+                          onClick={() => setIsPFModalOpen(true)}
+                          className="text-[#714B67] hover:underline font-bold"
+                        >
+                          Min(Basic, ₹15,000) × 12% = ₹1,800
+                        </button>
+                      ) : rule.formula ? (
                         <span className="bg-[#FBFAFB] px-2 py-0.5 rounded border border-[#E4E1E5]">
                           {rule.formula}
                         </span>
@@ -163,7 +188,16 @@ export function SalaryRulesView() {
                       )}
                     </td>
                     <td className="py-3.5 px-4 text-right">
-                      {!isReadOnly ? (
+                      {isPFRule ? (
+                        <button
+                          type="button"
+                          onClick={() => setIsPFModalOpen(true)}
+                          className="p-1.5 text-[#9A6B0A] hover:bg-[#FFF6D2] rounded transition-colors"
+                          title="View Locked Statutory Rule Formula"
+                        >
+                          <Lock className="w-3.5 h-3.5" />
+                        </button>
+                      ) : !isReadOnly ? (
                         <button
                           onClick={() => handleEdit(rule)}
                           className="p-1.5 text-[#74717A] hover:text-[#714B67] hover:bg-[#F4F3F5] rounded transition-colors"
@@ -343,6 +377,13 @@ export function SalaryRulesView() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Statutory Contribution Breakdown Modal */}
+      <StatutoryContributionModal
+        basicSalary={35000}
+        isOpen={isPFModalOpen}
+        onClose={() => setIsPFModalOpen(false)}
+      />
     </div>
   );
 }

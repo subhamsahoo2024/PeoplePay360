@@ -283,28 +283,122 @@ export function LeaveRequestModal() {
               />
             </div>
 
-            {/* File Upload Mock */}
-            <div>
-              <label className="block text-xs font-semibold text-[#28262D] mb-1">
-                Supporting Attachment (Optional / Medical Certificate)
-              </label>
-              <div className="border border-dashed border-[#E4E1E5] rounded-[10px] p-3 text-center bg-[#FBFAFB] hover:bg-[#F4F3F5] transition-colors cursor-pointer">
-                <input
-                  type="file"
-                  id="leave-file"
-                  className="hidden"
-                  onChange={(e) => {
-                    if (e.target.files && e.target.files[0]) {
-                      setAttachmentName(e.target.files[0].name);
-                    }
-                  }}
-                />
-                <label htmlFor="leave-file" className="cursor-pointer flex items-center justify-center gap-2 text-xs text-[#714B67] font-medium">
-                  <Upload className="w-4 h-4" />
-                  <span>{attachmentName ? attachmentName : 'Upload Medical Slip / Certificate (PDF, PNG, JPG)'}</span>
-                </label>
+            {/* MANDATORY MEDICAL PROOF WORKFLOW (LEAVES >= 10 DAYS) */}
+            {selectedTypeId === 'lt-3' && impact.workingDays >= 10 ? (
+              <div className="p-4 rounded-[14px] bg-[#FFF8E1] border border-[#FBE6A2] space-y-3">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="w-4 h-4 text-[#92400E] shrink-0 mt-0.5" />
+                  <div>
+                    <h4 className="text-xs font-bold text-[#92400E]">
+                      Medical Proof Required (Duration: {impact.workingDays} Days)
+                    </h4>
+                    <p className="text-[11px] text-[#28262D] mt-0.5">
+                      Company policy mandates verified hospital admission or physician certificates for medical leave of 10 or more working days.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="space-y-2 pt-1 border-t border-[#FBE6A2]">
+                  <span className="block text-[11px] font-bold text-[#92400E]">Select Submission Option:</span>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <label
+                      className={cn(
+                        'p-2.5 rounded-[10px] border cursor-pointer flex items-start gap-2 transition-colors',
+                        !attachmentName
+                          ? 'bg-white border-[#FCD34D]'
+                          : 'bg-white/80 border-[#E4E1E5]'
+                      )}
+                    >
+                      <input
+                        type="radio"
+                        name="med_submission_opt"
+                        checked={!attachmentName ? false : true}
+                        onChange={() => {}}
+                        className="mt-0.5 text-[#714B67]"
+                      />
+                      <div>
+                        <span className="text-xs font-bold text-[#28262D] block">Upload Proof Now</span>
+                        <span className="text-[10px] text-[#74717A]">Attach PDF/JPG/PNG certificate now.</span>
+                      </div>
+                    </label>
+
+                    <label
+                      className={cn(
+                        'p-2.5 rounded-[10px] border cursor-pointer flex items-start gap-2 transition-colors',
+                        !attachmentName
+                          ? 'bg-white border-[#FCD34D]'
+                          : 'bg-white/80 border-[#E4E1E5]'
+                      )}
+                    >
+                      <input
+                        type="radio"
+                        name="med_submission_opt"
+                        defaultChecked={true}
+                        className="mt-0.5 text-[#714B67]"
+                      />
+                      <div>
+                        <span className="text-xs font-bold text-[#28262D] block">Submit Post-Return</span>
+                        <span className="text-[10px] text-[#74717A]">Allowed within 3 days after return date.</span>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-[#28262D] mb-1">
+                    Upload Hospital Certificate / Doctor Note (PDF, PNG, JPG up to 10MB)
+                  </label>
+                  <div className="border border-dashed border-[#FCD34D] rounded-[10px] p-2.5 text-center bg-white hover:bg-[#FFFDF5] transition-colors cursor-pointer">
+                    <input
+                      type="file"
+                      id="leave-file-med"
+                      accept=".pdf,.png,.jpg,.jpeg"
+                      className="hidden"
+                      onChange={(e) => {
+                        if (e.target.files && e.target.files[0]) {
+                          const f = e.target.files[0];
+                          if (f.size > 10 * 1024 * 1024) {
+                            alert('File exceeds 10MB limit.');
+                            return;
+                          }
+                          setAttachmentName(f.name);
+                        }
+                      }}
+                    />
+                    <label
+                      htmlFor="leave-file-med"
+                      className="cursor-pointer flex items-center justify-center gap-2 text-xs text-[#92400E] font-medium"
+                    >
+                      <Upload className="w-4 h-4" />
+                      <span>{attachmentName ? attachmentName : 'Click to select certificate file'}</span>
+                    </label>
+                  </div>
+                </div>
               </div>
-            </div>
+            ) : (
+              /* Standard Optional Attachment for ordinary leaves */
+              <div>
+                <label className="block text-xs font-semibold text-[#28262D] mb-1">
+                  Supporting Attachment (Optional)
+                </label>
+                <div className="border border-dashed border-[#E4E1E5] rounded-[10px] p-3 text-center bg-[#FBFAFB] hover:bg-[#F4F3F5] transition-colors cursor-pointer">
+                  <input
+                    type="file"
+                    id="leave-file"
+                    className="hidden"
+                    onChange={(e) => {
+                      if (e.target.files && e.target.files[0]) {
+                        setAttachmentName(e.target.files[0].name);
+                      }
+                    }}
+                  />
+                  <label htmlFor="leave-file" className="cursor-pointer flex items-center justify-center gap-2 text-xs text-[#714B67] font-medium">
+                    <Upload className="w-4 h-4" />
+                    <span>{attachmentName ? attachmentName : 'Upload Document (PDF, PNG, JPG)'}</span>
+                  </label>
+                </div>
+              </div>
+            )}
 
             {/* LIVE IMPACT PREVIEW CARD */}
             <div className="p-4 bg-gradient-to-br from-[#FFFDF5] to-[#FBFAFB] rounded-[14px] border border-[#F8E29E] shadow-2xs">
