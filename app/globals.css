@@ -1,0 +1,47 @@
+@import "tailwindcss";
+
+@theme {
+  --color-plum-primary: #714B67;
+  --color-plum-deep: #4D3348;
+  --color-plum-muted: #A4879F;
+  --color-brand-yellow: #F4C430;
+  --color-pale-yellow: #FFF6D2;
+  --color-warm-white: #FBFAFB;
+  --color-surface-white: #FFFFFF;
+  --color-soft-grey: #F4F3F5;
+  --color-border-grey: #E4E1E5;
+  --color-text-primary: #28262D;
+  --color-text-secondary: #74717A;
+  --color-brand-success: #438A6B;
+  --color-brand-warning: #D49525;
+  --color-brand-error: #C85A54;
+}
+
+body {
+  background-color: var(--color-warm-white);
+  color: var(--color-text-primary);
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* Tabular numbers for salaries */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #D5D1D6;
+  border-radius: 9999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #A4879F;
+}
+

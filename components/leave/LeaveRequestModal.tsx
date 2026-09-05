@@ -1,0 +1,426 @@
+'use client';
+
+import React, { useState, useMemo } from 'react';
+import { useApp } from '@/lib/context/app-context';
+import { motion, AnimatePresence } from 'motion/react';
+import {
+  X,
+  Palmtree,
+  Calendar,
+  AlertTriangle,
+  Upload,
+  Info,
+  CheckCircle2,
+  DollarSign,
+  TrendingDown,
+  User,
+} from 'lucide-react';
+import { LEAVE_TYPES } from '@/lib/mock-data/leaves';
+import { formatINR } from '@/lib/utils';
+import { cn } from '@/lib/utils';
+
+export function LeaveRequestModal() {
+  const { isLeaveModalOpen, setIsLeaveModalOpen, currentEmployee, submitLeaveRequest } = useApp();
+
+  const [selectedTypeId, setSelectedTypeId] = useState<string>('lt-1');
+  const [startDate, setStartDate] = useState<string>('2026-09-18');
+  const [endDate, setEndDate] = useState<string>('2026-09-18');
+  const [isHalfDay, setIsHalfDay] = useState<boolean>(false);
+  const [halfDayPeriod, setHalfDayPeriod] = useState<'first_half' | 'second_half'>('first_half');
+  const [reason, setReason] = useState<string>('');
+  const [attachmentName, setAttachmentName] = useState<string>('');
+
+  const selectedType = LEAVE_TYPES.find((t) => t.id === selectedTypeId) || LEAVE_TYPES[0];
+
+  // Calculate live impact
+  const impact = useMemo(() => {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+
+    let calDays = 0;
+    let weekends = 0;
+    let holidays = 0;
+    let workingDays = 0;
+
+    if (!isNaN(start.getTime()) && !isNaN(end.getTime()) && end >= start) {
+      let cur = new Date(start);
+      while (cur <= end) {
+        calDays++;
+        const dayOfWeek = cur.getDay(); // 0 is Sun, 6 is Sat
+        if (dayOfWeek === 0 || dayOfWeek === 6) {
+          weekends++;
+        } else {
+          workingDays++;
+        }
+        cur.setDate(cur.getDate() + 1);
+      }
+    } else {
+      calDays = 1;
+      workingDays = 1;
+    }
+
+    if (isHalfDay) {
+      workingDays = 0.5;
+      calDays = 0.5;
+    }
+
+    // Check balance
+    const availablePaidDays = selectedType.remainingDays ?? currentEmployee.paidLeaveBalance ?? 8;
+    let paidDaysUsed = 0;
+    let unpaidDays = 0;
+
+    if (selectedType.isPaid) {
+      if (workingDays <= availablePaidDays) {
+        paidDaysUsed = workingDays;
+        unpaidDays = 0;
+      } else {
+        paidDaysUsed = availablePaidDays;
+        unpaidDays = workingDays - availablePaidDays;
+      }
+    } else {
+      paidDaysUsed = 0;
+      unpaidDays = workingDays;
+    }
+
+    // Daily salary rate calculation (Monthly gross / 30)
+    const monthlyGross = currentEmployee.monthlySalaryGross || 45000;
+    const dailyRate = Math.round(monthlyGross / 30);
+    const estimatedDeduction = Math.round(unpaidDays * dailyRate);
+    const estimatedNetSalary = Math.max(0, monthlyGross - 4250 - estimatedDeduction);
+
+    return {
+      calDays,
+      weekends,
+      holidays,
+      workingDays,
+      paidDaysUsed,
+      unpaidDays,
+      estimatedDeduction,
+      estimatedNetSalary,
+      availablePaidDays,
+    };
+  }, [startDate, endDate, isHalfDay, selectedType, currentEmployee]);
+
+  if (!isLeaveModalOpen) return null;
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!reason.trim()) return;
+
+    submitLeaveRequest({
+      leaveTypeId: selectedType.id,
+      leaveTypeName: selectedType.name,
+      isPaid: selectedType.isPaid,
+      startDate,
+      endDate,
+      isHalfDay,
+      halfDayPeriod: isHalfDay ? halfDayPeriod : undefined,
+      reason,
+      attachmentName: attachmentName || undefined,
+      calendarDays: impact.calDays,
+      excludedWeekends: impact.weekends,
+      excludedHolidays: impact.holidays,
+      chargeableWorkingDays: impact.workingDays,
+      paidDaysUsed: impact.paidDaysUsed,
+      unpaidDays: impact.unpaidDays,
+      estimatedDeduction: impact.estimatedDeduction,
+      estimatedNetSalaryAfter: impact.estimatedNetSalary,
+    });
+  };
+
+  return (
+    <AnimatePresence>
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm overflow-y-auto">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.95 }}
+          className="relative w-full max-w-xl bg-white rounded-[18px] border border-[#E4E1E5] shadow-2xl p-6 my-8"
+        >
+          {/* Header */}
+          <div className="flex items-start justify-between pb-4 border-b border-[#F4F3F5]">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-[12px] bg-[#F1ECF5] text-[#714B67] flex items-center justify-center font-bold">
+                <Palmtree className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-[#28262D]">Request Leave / Time Off</h3>
+                <p className="text-xs text-[#74717A]">
+                  With real-time payroll deduction and working day impact preview.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setIsLeaveModalOpen(false)}
+              className="p-1.5 rounded-full text-[#74717A] hover:bg-[#F4F3F5]"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          <form onSubmit={handleSubmit} className="mt-4 space-y-4">
+            {/* Leave Type Select */}
+            <div>
+              <label className="block text-xs font-semibold text-[#28262D] mb-1.5">
+                Leave Type *
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {LEAVE_TYPES.map((lt) => {
+                  const isSel = selectedTypeId === lt.id;
+                  return (
+                    <button
+                      key={lt.id}
+                      type="button"
+                      onClick={() => setSelectedTypeId(lt.id)}
+                      className={cn(
+                        'p-2.5 rounded-[12px] border text-left transition-all',
+                        isSel
+                          ? 'border-[#714B67] bg-[#FBFAFB] ring-2 ring-[#714B67]/20 shadow-xs'
+                          : 'border-[#E4E1E5] bg-white hover:bg-[#FBFAFB]'
+                      )}
+                    >
+                      <p className="text-xs font-bold text-[#28262D] truncate">{lt.code}</p>
+                      <p className="text-[10px] text-[#74717A] truncate mt-0.5">{lt.name}</p>
+                      <div className="mt-1 flex items-center justify-between text-[10px]">
+                        <span className="font-semibold text-[#714B67] tabular-nums">
+                          {lt.remainingDays} left
+                        </span>
+                        <span className="text-[9px] text-[#A4879F]">/ {lt.totalDays}</span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Date Range Picker */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-[#28262D] mb-1">
+                  Start Date *
+                </label>
+                <input
+                  type="date"
+                  required
+                  value={startDate}
+                  onChange={(e) => {
+                    setStartDate(e.target.value);
+                    if (e.target.value > endDate) setEndDate(e.target.value);
+                  }}
+                  className="w-full px-3 py-2 bg-[#FBFAFB] border border-[#E4E1E5] focus:border-[#714B67] rounded-[10px] text-xs text-[#28262D] outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-[#28262D] mb-1">
+                  End Date *
+                </label>
+                <input
+                  type="date"
+                  required
+                  min={startDate}
+                  value={endDate}
+                  onChange={(e) => setEndDate(e.target.value)}
+                  className="w-full px-3 py-2 bg-[#FBFAFB] border border-[#E4E1E5] focus:border-[#714B67] rounded-[10px] text-xs text-[#28262D] outline-none"
+                />
+              </div>
+            </div>
+
+            {/* Half Day Checkbox */}
+            <div className="flex items-center justify-between p-3 rounded-[10px] bg-[#FBFAFB] border border-[#E4E1E5]">
+              <label className="flex items-center gap-2 text-xs font-medium text-[#28262D] cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isHalfDay}
+                  onChange={(e) => setIsHalfDay(e.target.checked)}
+                  className="w-4 h-4 text-[#714B67] rounded border-[#E4E1E5] focus:ring-[#714B67]"
+                />
+                <span>Half-day leave</span>
+              </label>
+
+              {isHalfDay && (
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setHalfDayPeriod('first_half')}
+                    className={cn(
+                      'px-2.5 py-1 text-xs rounded-md font-medium transition-colors',
+                      halfDayPeriod === 'first_half'
+                        ? 'bg-[#714B67] text-white'
+                        : 'bg-white text-[#74717A] border border-[#E4E1E5]'
+                    )}
+                  >
+                    First Half
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setHalfDayPeriod('second_half')}
+                    className={cn(
+                      'px-2.5 py-1 text-xs rounded-md font-medium transition-colors',
+                      halfDayPeriod === 'second_half'
+                        ? 'bg-[#714B67] text-white'
+                        : 'bg-white text-[#74717A] border border-[#E4E1E5]'
+                    )}
+                  >
+                    Second Half
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* Reason */}
+            <div>
+              <label className="block text-xs font-semibold text-[#28262D] mb-1">
+                Reason for Leave *
+              </label>
+              <textarea
+                rows={2}
+                required
+                placeholder="Specify the context for your absence..."
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+                className="w-full px-3 py-2 bg-[#FBFAFB] border border-[#E4E1E5] focus:border-[#714B67] rounded-[10px] text-xs text-[#28262D] outline-none resize-none"
+              />
+            </div>
+
+            {/* File Upload Mock */}
+            <div>
+              <label className="block text-xs font-semibold text-[#28262D] mb-1">
+                Supporting Attachment (Optional / Medical Certificate)
+              </label>
+              <div className="border border-dashed border-[#E4E1E5] rounded-[10px] p-3 text-center bg-[#FBFAFB] hover:bg-[#F4F3F5] transition-colors cursor-pointer">
+                <input
+                  type="file"
+                  id="leave-file"
+                  className="hidden"
+                  onChange={(e) => {
+                    if (e.target.files && e.target.files[0]) {
+                      setAttachmentName(e.target.files[0].name);
+                    }
+                  }}
+                />
+                <label htmlFor="leave-file" className="cursor-pointer flex items-center justify-center gap-2 text-xs text-[#714B67] font-medium">
+                  <Upload className="w-4 h-4" />
+                  <span>{attachmentName ? attachmentName : 'Upload Medical Slip / Certificate (PDF, PNG, JPG)'}</span>
+                </label>
+              </div>
+            </div>
+
+            {/* LIVE IMPACT PREVIEW CARD */}
+            <div className="p-4 bg-gradient-to-br from-[#FFFDF5] to-[#FBFAFB] rounded-[14px] border border-[#F8E29E] shadow-2xs">
+              <div className="flex items-center justify-between pb-2 border-b border-[#F8E29E]/60">
+                <span className="text-xs font-bold text-[#9A6B0A] uppercase tracking-wider flex items-center gap-1.5">
+                  <Info className="w-3.5 h-3.5" /> Live Payroll & Working Day Impact Preview
+                </span>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#FFF6D2] text-[#9A6B0A] border border-[#F8E29E]">
+                  Auto-Computed
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mt-3 text-xs">
+                <div>
+                  <span className="text-[#74717A] text-[11px] block">Total Calendar Days:</span>
+                  <strong className="text-[#28262D] tabular-nums text-sm">
+                    {impact.calDays} Day(s)
+                  </strong>
+                </div>
+
+                <div>
+                  <span className="text-[#74717A] text-[11px] block">Excluded Weekends:</span>
+                  <strong className="text-[#28262D] tabular-nums text-sm">
+                    {impact.weekends} Day(s)
+                  </strong>
+                </div>
+
+                <div>
+                  <span className="text-[#74717A] text-[11px] block">Chargeable Working:</span>
+                  <strong className="text-[#714B67] tabular-nums text-sm font-bold">
+                    {impact.workingDays} Day(s)
+                  </strong>
+                </div>
+
+                <div>
+                  <span className="text-[#74717A] text-[11px] block">Paid Days Covered:</span>
+                  <strong className="text-[#438A6B] tabular-nums text-sm font-bold">
+                    {impact.paidDaysUsed} Day(s)
+                  </strong>
+                </div>
+
+                <div>
+                  <span className="text-[#74717A] text-[11px] block">Unpaid Days (LOP):</span>
+                  <strong
+                    className={cn(
+                      'tabular-nums text-sm font-bold',
+                      impact.unpaidDays > 0 ? 'text-[#C85A54]' : 'text-[#74717A]'
+                    )}
+                  >
+                    {impact.unpaidDays} Day(s)
+                  </strong>
+                </div>
+
+                <div>
+                  <span className="text-[#74717A] text-[11px] block">Estimated LOP Deduction:</span>
+                  <strong
+                    className={cn(
+                      'tabular-nums text-sm font-bold',
+                      impact.estimatedDeduction > 0 ? 'text-[#C85A54]' : 'text-[#438A6B]'
+                    )}
+                  >
+                    {formatINR(impact.estimatedDeduction)}
+                  </strong>
+                </div>
+              </div>
+
+              {/* Deduction warning if unpaid days occur */}
+              {impact.unpaidDays > 0 && (
+                <div className="mt-3 p-2.5 bg-[#FDF1F0] rounded-[10px] border border-[#F6CBC8] text-[11px] text-[#C85A54] flex items-start gap-2">
+                  <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-semibold">Paid Balance Exceeded</p>
+                    <p>
+                      You only have {impact.availablePaidDays} paid day(s) left in this category. The remaining{' '}
+                      {impact.unpaidDays} day(s) will be treated as Loss of Pay (LOP), reducing your net monthly pay
+                      by {formatINR(impact.estimatedDeduction)}.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Approver hierarchy display */}
+              <div className="mt-3 pt-3 border-t border-[#F8E29E]/60 flex items-center justify-between text-[11px] text-[#74717A]">
+                <div className="flex items-center gap-1.5">
+                  <User className="w-3.5 h-3.5 text-[#714B67]" />
+                  <span>
+                    Routing to Approver:{' '}
+                    <strong className="text-[#28262D]">
+                      {currentEmployee.reportingManagerName || 'Priya Sundaram (Head of People)'}
+                    </strong>
+                  </span>
+                </div>
+                <span className="text-[#438A6B] font-semibold">Tier 1 Approval</span>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="pt-2 flex items-center justify-end gap-2.5">
+              <button
+                type="button"
+                onClick={() => setIsLeaveModalOpen(false)}
+                className="px-4 py-2 text-xs font-medium text-[#74717A] hover:bg-[#F4F3F5] rounded-[10px]"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                className="px-5 py-2.5 bg-[#714B67] hover:bg-[#5C3C53] text-white text-xs font-bold rounded-[10px] shadow-xs flex items-center gap-1.5"
+              >
+                <CheckCircle2 className="w-4 h-4" />
+                Submit Leave Application
+              </button>
+            </div>
+          </form>
+        </motion.div>
+      </div>
+    </AnimatePresence>
+  );
+}

@@ -1,0 +1,310 @@
+'use client';
+
+import React from 'react';
+import { useApp } from '@/lib/context/app-context';
+import { motion, AnimatePresence } from 'motion/react';
+import {
+  X,
+  Printer,
+  Download,
+  ShieldCheck,
+  Building2,
+  FileSpreadsheet,
+  Info,
+  Calendar,
+  IndianRupee,
+  CheckCircle2,
+  Sparkles,
+  HelpCircle,
+} from 'lucide-react';
+import { formatINR, formatDate } from '@/lib/utils';
+import { StatusBadge } from '@/components/shared/StatusBadge';
+
+export function SalaryBreakdownDrawer() {
+  const {
+    isSalaryDrawerOpen,
+    setIsSalaryDrawerOpen,
+    selectedPayslip,
+    currentEmployee,
+    setIsExplainSalaryDiffOpen,
+  } = useApp();
+
+  if (!isSalaryDrawerOpen || !selectedPayslip) return null;
+
+  const ps = selectedPayslip;
+
+  const earningsList = (ps.earnings && ps.earnings.length > 0)
+    ? ps.earnings
+    : (ps.lines?.filter((l) => ['basic', 'allowance', 'overtime', 'adjustment'].includes(l.category)).map((l) => ({
+        ruleName: l.name,
+        ruleCode: l.code,
+        amount: l.amount,
+      })) || [
+        { ruleName: 'Basic Salary', ruleCode: 'BASIC', amount: ps.basicSalary },
+        { ruleName: 'House Rent Allowance (HRA)', ruleCode: 'HRA', amount: ps.hra },
+        { ruleName: 'Travel Allowance', ruleCode: 'TRAV', amount: ps.travelAllowance },
+        { ruleName: 'Special Allowance', ruleCode: 'SPEC', amount: ps.otherAllowances },
+      ]);
+
+  const deductionsList = (ps.deductions && ps.deductions.length > 0)
+    ? ps.deductions
+    : (ps.lines?.filter((l) => ['deduction', 'tax'].includes(l.category)).map((l) => ({
+        ruleName: l.name,
+        ruleCode: l.code,
+        amount: l.amount,
+      })) || [
+        { ruleName: 'Employee PF (12%)', ruleCode: 'PF_EE', amount: 1800 },
+        { ruleName: 'Professional Tax', ruleCode: 'PT', amount: 200 },
+        { ruleName: 'TDS (Income Tax)', ruleCode: 'TDS', amount: ps.taxDeduction || 750 },
+      ]);
+
+  const contributionsList = (ps.employerContributions && ps.employerContributions.length > 0)
+    ? ps.employerContributions
+    : [
+        { ruleName: 'Employer PF (3.67% EPF + 8.33% EPS)', amount: 1800 },
+        { ruleName: 'Gratuity Provision (4.81%)', amount: 1684 },
+      ];
+
+  // Print function
+  const handlePrint = () => {
+    window.print();
+  };
+
+  return (
+    <AnimatePresence>
+      <div className="fixed inset-0 z-50 overflow-hidden">
+        {/* Backdrop */}
+        <div
+          onClick={() => setIsSalaryDrawerOpen(false)}
+          className="absolute inset-0 bg-black/40 backdrop-blur-xs transition-opacity"
+        />
+
+        <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
+          <motion.div
+            initial={{ x: '100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '100%' }}
+            transition={{ duration: 0.25, ease: 'easeOut' }}
+            className="w-screen max-w-2xl bg-white border-l border-[#E4E1E5] shadow-2xl flex flex-col overflow-y-auto"
+          >
+            {/* Drawer Header */}
+            <div className="p-6 border-b border-[#F4F3F5] bg-[#FBFAFB] flex items-center justify-between sticky top-0 z-10">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-[12px] bg-[#714B67] text-white flex items-center justify-center font-bold shadow-xs">
+                  <FileSpreadsheet className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base font-bold text-[#28262D]">
+                      Salary Breakdown & Payslip
+                    </h3>
+                    <StatusBadge status={ps.status} size="sm" />
+                  </div>
+                  <p className="text-xs text-[#74717A] mt-0.5">
+                    {ps.period} • Ref: <span className="font-mono text-[#714B67]">{ps.payslipNumber}</span>
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handlePrint}
+                  title="Print or Save PDF"
+                  className="p-2 rounded-[10px] text-[#74717A] hover:bg-[#F4F3F5] hover:text-[#28262D] transition-colors border border-[#E4E1E5]"
+                >
+                  <Printer className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setIsSalaryDrawerOpen(false)}
+                  className="p-2 rounded-[10px] text-[#74717A] hover:bg-[#F4F3F5] transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Content Container */}
+            <div className="p-6 space-y-6 flex-1 text-xs">
+              {/* Employee & Organization Header */}
+              <div className="p-4 rounded-[14px] bg-[#FBFAFB] border border-[#E4E1E5] grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div>
+                  <span className="text-[#74717A] text-[10px] uppercase font-bold tracking-wider block">
+                    Employee Name
+                  </span>
+                  <span className="font-bold text-[#28262D] text-sm">{ps.employeeName}</span>
+                  <span className="text-[#74717A] text-[11px] block">{ps.employeeCode}</span>
+                </div>
+
+                <div>
+                  <span className="text-[#74717A] text-[10px] uppercase font-bold tracking-wider block">
+                    Department / Role
+                  </span>
+                  <span className="font-medium text-[#28262D]">{ps.department}</span>
+                  <span className="text-[#74717A] text-[11px] block">{ps.designation || ps.jobPosition}</span>
+                </div>
+
+                <div>
+                  <span className="text-[#74717A] text-[10px] uppercase font-bold tracking-wider block">
+                    Bank & Account
+                  </span>
+                  <span className="font-mono text-[#28262D]">{ps.bankAccountMasked || 'HDFC •••• 4912'}</span>
+                  <span className="text-[#74717A] text-[11px] block">IFSC: {ps.ifscCode || 'HDFC0001824'}</span>
+                </div>
+
+                <div>
+                  <span className="text-[#74717A] text-[10px] uppercase font-bold tracking-wider block">
+                    PAN & UAN
+                  </span>
+                  <span className="font-mono text-[#28262D]">PAN: {ps.panNumber || 'ABCDE1234F'}</span>
+                  <span className="text-[#74717A] text-[11px] block font-mono">UAN: {ps.uanNumber || '100982348123'}</span>
+                </div>
+              </div>
+
+              {/* Attendance & Working Days Summary */}
+              <div className="p-3.5 rounded-[12px] bg-[#F4F3F5] border border-[#E4E1E5] flex items-center justify-between text-xs flex-wrap gap-2">
+                <div className="flex items-center gap-1.5 font-medium text-[#28262D]">
+                  <Calendar className="w-4 h-4 text-[#714B67]" />
+                  <span>Calendar Days: <strong>{ps.workingDays ?? ps.workedDays ?? 30}</strong></span>
+                </div>
+                <div>Paid Days: <strong className="text-[#438A6B]">{ps.paidDays ?? ((ps.workedDays ?? 30) + (ps.paidLeaveDays ?? 0))}</strong></div>
+                <div>LOP (Unpaid) Days: <strong className={(ps.lopDays ?? ps.unpaidLeaveDays ?? 0) > 0 ? 'text-[#C85A54]' : 'text-[#74717A]'}>{ps.lopDays ?? ps.unpaidLeaveDays ?? 0}</strong></div>
+                <div>Structure: <strong className="text-[#714B67]">{ps.salaryStructureName}</strong></div>
+              </div>
+
+              {/* Earnings & Deductions Tables */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Earnings */}
+                <div className="border border-[#E4E1E5] rounded-[14px] overflow-hidden">
+                  <div className="p-3 bg-[#FBFAFB] border-b border-[#E4E1E5] flex items-center justify-between">
+                    <span className="font-bold text-[#28262D] uppercase tracking-wider text-[11px]">
+                      Earnings Components
+                    </span>
+                    <span className="text-[10px] font-semibold text-[#438A6B]">Monthly (₹)</span>
+                  </div>
+
+                  <div className="divide-y divide-[#F4F3F5] p-1">
+                    {earningsList.map((e, idx) => (
+                      <div key={idx} className="p-2.5 flex items-center justify-between">
+                        <div>
+                          <p className="font-medium text-[#28262D]">{e.ruleName}</p>
+                          <p className="text-[10px] font-mono text-[#A4879F]">{e.ruleCode}</p>
+                        </div>
+                        <span className="font-semibold text-[#28262D] tabular-nums">
+                          {formatINR(e.amount)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="p-3 bg-[#FBFAFB] border-t border-[#E4E1E5] flex items-center justify-between font-bold text-[#28262D]">
+                    <span>Total Gross Earnings</span>
+                    <span className="text-sm tabular-nums text-[#714B67]">
+                      {formatINR(ps.grossSalary)}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Deductions */}
+                <div className="border border-[#E4E1E5] rounded-[14px] overflow-hidden">
+                  <div className="p-3 bg-[#FBFAFB] border-b border-[#E4E1E5] flex items-center justify-between">
+                    <span className="font-bold text-[#28262D] uppercase tracking-wider text-[11px]">
+                      Statutory Deductions
+                    </span>
+                    <span className="text-[10px] font-semibold text-[#C85A54]">Deductions (₹)</span>
+                  </div>
+
+                  <div className="divide-y divide-[#F4F3F5] p-1">
+                    {deductionsList.map((d, idx) => (
+                      <div key={idx} className="p-2.5 flex items-center justify-between">
+                        <div>
+                          <p className="font-medium text-[#28262D]">{d.ruleName}</p>
+                          <p className="text-[10px] font-mono text-[#A4879F]">{d.ruleCode}</p>
+                        </div>
+                        <span className="font-semibold text-[#C85A54] tabular-nums">
+                          -{formatINR(d.amount)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="p-3 bg-[#FBFAFB] border-t border-[#E4E1E5] flex items-center justify-between font-bold text-[#28262D]">
+                    <span>Total Deductions</span>
+                    <span className="text-sm tabular-nums text-[#C85A54]">
+                      -{formatINR(ps.totalDeductions)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Employer Contributions & Cost to Company (CTC) */}
+              <div className="border border-[#E4E1E5] rounded-[14px] p-4 bg-[#FBFAFB]">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-bold text-[#28262D] text-xs flex items-center gap-1.5">
+                    <Building2 className="w-3.5 h-3.5 text-[#714B67]" />
+                    Employer Contributions (Not Deducted from Employee)
+                  </span>
+                  <span className="text-[10px] text-[#74717A]">Statutory Compliance</span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 text-xs">
+                  {contributionsList.map((c, idx) => (
+                    <div key={idx} className="p-2.5 bg-white rounded-[10px] border border-[#E4E1E5] flex items-center justify-between">
+                      <span className="text-[#74717A]">{c.ruleName}</span>
+                      <strong className="text-[#28262D] tabular-nums">{formatINR(c.amount)}</strong>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* NET SALARY CALLOUT */}
+              <div className="p-5 rounded-[16px] bg-gradient-to-br from-[#714B67] to-[#4D3348] text-white shadow-md flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div>
+                  <span className="text-xs uppercase tracking-wider font-semibold text-[#F3EEF2]/80">
+                    Net Take-Home Salary
+                  </span>
+                  <div className="text-3xl font-extrabold tabular-nums tracking-tight mt-0.5 text-white">
+                    {formatINR(ps.netSalary)}
+                  </div>
+                  <p className="text-[11px] text-[#F3EEF2]/90 mt-1 font-mono">
+                    Gross ({formatINR(ps.grossSalary)}) − Total Deductions ({formatINR(ps.totalDeductions)})
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => {
+                      setIsSalaryDrawerOpen(false);
+                      setIsExplainSalaryDiffOpen(true);
+                    }}
+                    className="px-3.5 py-2 rounded-[10px] bg-white/15 hover:bg-white/25 text-white text-xs font-semibold backdrop-blur-xs transition-colors flex items-center gap-1.5 border border-white/20"
+                  >
+                    <HelpCircle className="w-3.5 h-3.5 text-[#F4C430]" />
+                    <span>Explain Difference</span>
+                  </button>
+
+                  <button
+                    onClick={handlePrint}
+                    className="px-3.5 py-2 rounded-[10px] bg-[#F4C430] hover:bg-[#E5B520] text-[#4D3348] text-xs font-bold transition-colors flex items-center gap-1.5 shadow-xs"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    <span>Download PDF</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Statutory Footnote */}
+              <div className="p-3.5 rounded-[12px] bg-[#FBFAFB] border border-[#E4E1E5] text-[11px] text-[#74717A] flex items-start gap-2 leading-relaxed">
+                <ShieldCheck className="w-4 h-4 text-[#438A6B] shrink-0 mt-0.5" />
+                <div>
+                  <strong>Official Enterprise Statutory Notice:</strong> This electronic payslip has been
+                  generated by PeoplePay360 compliance engine in accordance with Indian Payment of Wages Act,
+                  EPF & MP Act 1952, and Income Tax Act 1961. No physical signature is required.
+                </div>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      </div>
+    </AnimatePresence>
+  );
+}

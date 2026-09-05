@@ -1,0 +1,267 @@
+'use client';
+
+import React, { useState } from 'react';
+import { useApp } from '@/lib/context/app-context';
+import {
+  FileSpreadsheet,
+  AlertTriangle,
+  Clock,
+  CheckCircle2,
+  Calendar,
+  CreditCard,
+  Search,
+  Filter,
+  Eye,
+  AlertCircle,
+  X,
+} from 'lucide-react';
+import { CONTRACTS } from '@/lib/mock-data/contracts';
+import { Contract } from '@/lib/types';
+import { StatusBadge } from '@/components/shared/StatusBadge';
+import { formatINR, formatDate } from '@/lib/utils';
+import { motion, AnimatePresence } from 'motion/react';
+
+export function ContractsView() {
+  const [contractsList, setContractsList] = useState<Contract[]>(CONTRACTS);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
+
+  // Filter
+  const filtered = contractsList.filter((c) => {
+    const ref = c.reference || c.contractReference || '';
+    const job = c.jobTitle || c.jobPosition || '';
+    const matchesSearch =
+      c.employeeName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      ref.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      job.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === 'all' || c.status === statusFilter;
+    return matchesSearch && matchesStatus;
+  });
+
+  const expiringCount = contractsList.filter((c) => c.warningType === 'expiring_soon').length;
+  const mismatchCount = contractsList.filter((c) => c.warningType === 'wage_mismatch').length;
+
+  return (
+    <div className="space-y-6">
+      {/* Top Banner */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-[16px] border border-[#E4E1E5] shadow-xs">
+        <div>
+          <h2 className="text-xl font-bold text-[#28262D] tracking-tight">Contracts Management</h2>
+          <p className="text-xs text-[#74717A] mt-0.5">
+            Monitor employment terms, wage agreements, probation periods, and contract expiries.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2 text-xs">
+          <span className="font-semibold text-[#438A6B] bg-[#EBF6F0] px-3 py-1.5 rounded-[10px] border border-[#C3E6D5]">
+            {contractsList.filter((c) => c.status === 'running' || c.status === 'active').length} Active Running
+          </span>
+        </div>
+      </div>
+
+      {/* Warning Callout Banners if any */}
+      {(expiringCount > 0 || mismatchCount > 0) && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {expiringCount > 0 && (
+            <div className="p-4 bg-[#FFF6D2] rounded-[14px] border border-[#F8E29E] flex items-start gap-3 text-xs text-[#9A6B0A]">
+              <Clock className="w-5 h-5 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-bold">Contracts Expiring Within 30 Days ({expiringCount})</p>
+                <p className="mt-0.5 leading-relaxed">
+                  Fixed-term contracts for Deepak Chawla require renewal or permanent conversion prior to next payrun.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {mismatchCount > 0 && (
+            <div className="p-4 bg-[#FDF1F0] rounded-[14px] border border-[#F6CBC8] flex items-start gap-3 text-xs text-[#C85A54]">
+              <AlertTriangle className="w-5 h-5 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-bold">Salary Structure Wage Mismatch ({mismatchCount})</p>
+                <p className="mt-0.5 leading-relaxed">
+                  Contract wage for Sneha Nair differs from the linked Operations Specialist structure default.
+                </p>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Contracts Table */}
+      <div className="bg-white rounded-[16px] border border-[#E4E1E5] shadow-xs overflow-hidden">
+        {/* Table Filters */}
+        <div className="p-4 border-b border-[#F4F3F5] flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+          <div className="relative w-full sm:w-72">
+            <Search className="w-3.5 h-3.5 text-[#74717A] absolute left-3 top-1/2 -translate-y-1/2" />
+            <input
+              type="text"
+              placeholder="Search by contract ref or employee..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-8 pr-3 py-1.5 bg-[#FBFAFB] border border-[#E4E1E5] rounded-[10px] text-xs outline-none focus:border-[#714B67]"
+            />
+          </div>
+
+          <div className="flex items-center gap-1 bg-[#F4F3F5] p-1 rounded-[10px]">
+            {['all', 'running', 'draft', 'expired'].map((s) => (
+              <button
+                key={s}
+                onClick={() => setStatusFilter(s)}
+                className={`px-3 py-1 rounded-[8px] font-medium capitalize transition-colors ${
+                  statusFilter === s
+                    ? 'bg-white text-[#714B67] shadow-xs font-semibold'
+                    : 'text-[#74717A] hover:text-[#28262D]'
+                }`}
+              >
+                {s}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Table View */}
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs text-[#28262D]">
+            <thead className="bg-[#FBFAFB] text-[#74717A] uppercase text-[10px] font-bold tracking-wider border-b border-[#E4E1E5]">
+              <tr>
+                <th className="py-3 px-4">Contract Ref</th>
+                <th className="py-3 px-4">Employee</th>
+                <th className="py-3 px-4">Start Date</th>
+                <th className="py-3 px-4">End Date</th>
+                <th className="py-3 px-4">Monthly Wage</th>
+                <th className="py-3 px-4">Salary Structure</th>
+                <th className="py-3 px-4">Alerts</th>
+                <th className="py-3 px-4 text-right">Status</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#F4F3F5]">
+              {filtered.map((c) => (
+                <tr
+                  key={c.id}
+                  onClick={() => setSelectedContract(c)}
+                  className="hover:bg-[#FBFAFB] transition-colors cursor-pointer"
+                >
+                  <td className="py-3.5 px-4 font-mono font-semibold text-[#714B67]">
+                    {c.reference || c.contractReference}
+                  </td>
+                  <td className="py-3.5 px-4">
+                    <div className="font-semibold text-[#28262D]">{c.employeeName}</div>
+                    <div className="text-[11px] text-[#74717A]">{c.jobTitle || c.jobPosition} • {c.department}</div>
+                  </td>
+                  <td className="py-3.5 px-4 text-[#74717A]">{formatDate(c.startDate)}</td>
+                  <td className="py-3.5 px-4 text-[#74717A]">
+                    {c.endDate ? formatDate(c.endDate) : <span className="text-[#A4879F]">Permanent</span>}
+                  </td>
+                  <td className="py-3.5 px-4 font-bold tabular-nums text-[#28262D]">
+                    {formatINR(c.wageMonthly || c.wage)}
+                  </td>
+                  <td className="py-3.5 px-4 text-[#74717A] max-w-xs truncate">
+                    {c.salaryStructureName}
+                  </td>
+                  <td className="py-3.5 px-4">
+                    {c.warningType === 'expiring_soon' && (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[#9A6B0A] bg-[#FFF6D2] px-2 py-0.5 rounded border border-[#F8E29E]">
+                        <Clock className="w-3 h-3" /> Expiring Soon
+                      </span>
+                    )}
+                    {c.warningType === 'wage_mismatch' && (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[#C85A54] bg-[#FDF1F0] px-2 py-0.5 rounded border border-[#F6CBC8]">
+                        <AlertTriangle className="w-3 h-3" /> Wage Mismatch
+                      </span>
+                    )}
+                    {!c.warningType && (
+                      <span className="text-[11px] text-[#438A6B] flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3" /> Validated
+                      </span>
+                    )}
+                  </td>
+                  <td className="py-3.5 px-4 text-right">
+                    <StatusBadge status={c.status} size="sm" />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Contract Detail Modal */}
+      <AnimatePresence>
+        {selectedContract && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="relative w-full max-w-md bg-white rounded-[18px] border border-[#E4E1E5] shadow-2xl p-6"
+            >
+              <div className="flex items-center justify-between pb-3 border-b border-[#F4F3F5]">
+                <div>
+                  <h3 className="text-sm font-bold text-[#28262D]">
+                    Contract: {selectedContract.reference || selectedContract.contractReference}
+                  </h3>
+                  <p className="text-[11px] text-[#74717A]">{selectedContract.employeeName}</p>
+                </div>
+                <button
+                  onClick={() => setSelectedContract(null)}
+                  className="p-1 rounded-full text-[#74717A] hover:bg-[#F4F3F5]"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="mt-4 space-y-3 text-xs">
+                <div className="p-3 bg-[#FBFAFB] rounded-[10px] border border-[#E4E1E5] flex items-center justify-between">
+                  <span className="text-[#74717A]">Contract Status</span>
+                  <StatusBadge status={selectedContract.status} size="sm" />
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <span className="text-[10px] text-[#74717A] block">Monthly Wage:</span>
+                    <strong className="text-sm text-[#714B67] tabular-nums font-bold">
+                      {formatINR(selectedContract.wageMonthly || selectedContract.wage)}
+                    </strong>
+                  </div>
+                  <div>
+                    <span className="text-[10px] text-[#74717A] block">Annual CTC:</span>
+                    <strong className="text-sm text-[#28262D] tabular-nums font-bold">
+                      {formatINR(selectedContract.wageAnnual || ((selectedContract.wageMonthly || selectedContract.wage) * 12))}
+                    </strong>
+                  </div>
+                </div>
+
+                <div>
+                  <span className="text-[10px] text-[#74717A] block">Salary Structure:</span>
+                  <p className="font-medium text-[#28262D] mt-0.5">{selectedContract.salaryStructureName}</p>
+                </div>
+
+                <div>
+                  <span className="text-[10px] text-[#74717A] block">Working Schedule:</span>
+                  <p className="font-medium text-[#28262D] mt-0.5">{selectedContract.workingScheduleName}</p>
+                </div>
+
+                {selectedContract.warningDetails && (
+                  <div className="p-3 rounded-[10px] bg-[#FFF6D2] border border-[#F8E29E] text-[11px] text-[#9A6B0A]">
+                    <strong>Audit Notice:</strong> {selectedContract.warningDetails}
+                  </div>
+                )}
+              </div>
+
+              <div className="mt-5 pt-3 border-t border-[#F4F3F5] flex justify-end">
+                <button
+                  onClick={() => setSelectedContract(null)}
+                  className="px-4 py-2 bg-[#714B67] text-white text-xs font-semibold rounded-[10px]"
+                >
+                  Close
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
