@@ -17,7 +17,7 @@ export interface SeedUserSpec {
 export const DEMO_USER_SPECS: SeedUserSpec[] = [
   {
     email: 'admin@peoplepay360.demo',
-    name: 'Vikramaditya Sharma',
+    name: 'Sudeesh K',
     code: 'EMP-001',
     role: 'admin',
     department: 'Executive Leadership',
@@ -25,7 +25,7 @@ export const DEMO_USER_SPECS: SeedUserSpec[] = [
     phone: '+919876543210',
   },
   {
-    email: 'hr@peoplepay360.demo',
+    email: 'sri7685234@gmail.com',
     name: 'Priya Sundaram',
     code: 'EMP-002',
     role: 'hr_manager',
@@ -118,7 +118,20 @@ export async function seedDemoUsers(supabaseUrl: string, serviceRoleKey: string)
       console.log(`  Created Auth user: ${spec.email}`);
     } else {
       console.log(`  Existing Auth user: ${spec.email}`);
+      const { error: passwordError } = await supabase.auth.admin.updateUserById(authUser.id, {
+        password: DEMO_PASSWORD,
+        email_confirm: true,
+        user_metadata: { full_name: spec.name },
+      });
+      if (passwordError) throw passwordError;
     }
+
+    const departmentCode=spec.department.replace(/[^A-Za-z]/g,'').slice(0,8).toUpperCase();
+    const {data:department,error:departmentError}=await supabase.from('departments').upsert({company_id:DEMO_COMPANY_ID,name:spec.department,code:departmentCode,is_active:true},{onConflict:'company_id,code'}).select().single();
+    if(departmentError)throw departmentError;
+    const positionCode=`${departmentCode}-${spec.position.replace(/[^A-Za-z]/g,'').slice(0,8).toUpperCase()}`;
+    const {data:position,error:positionError}=await supabase.from('job_positions').upsert({company_id:DEMO_COMPANY_ID,department_id:department.id,title:spec.position,code:positionCode,is_active:true},{onConflict:'company_id,code'}).select().single();
+    if(positionError)throw positionError;
 
     // Profile (matching initialization_query.sql public.profiles exactly)
     await supabase.from('profiles').upsert(
@@ -145,6 +158,8 @@ export async function seedDemoUsers(supabaseUrl: string, serviceRoleKey: string)
           joining_date: '2023-01-15',
           status: 'active' as any,
           work_location: 'Bengaluru HQ',
+          department_id: department.id,
+          position_id: position.id,
         },
         { onConflict: 'company_id,employee_code' }
       )

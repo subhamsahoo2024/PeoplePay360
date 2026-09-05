@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { useApp } from '@/lib/context/app-context';
 import {
   Bell,
@@ -18,10 +17,8 @@ import {
 import { NotificationsDrawer } from './NotificationsDrawer';
 import { RoleSwitcherModal } from './RoleSwitcherModal';
 import { cn } from '@/lib/utils';
-import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 
 export function Header({ onToggleMobileMenu }: { onToggleMobileMenu?: () => void }) {
-  const router = useRouter();
   const {
     currentUser,
     currentEmployee,
@@ -38,14 +35,6 @@ export function Header({ onToggleMobileMenu }: { onToggleMobileMenu?: () => void
 
   const unreadCount = notifications.filter((n) => !n.read).length;
   const isCheckedIn = currentEmployee.currentAttendanceStatus === 'checked_in';
-
-  const signOut = async () => {
-    setIsProfileMenuOpen(false);
-    sessionStorage.removeItem('peoplepay360-demo-session');
-    const client = getSupabaseBrowserClient();
-    if (client) await client.auth.signOut();
-    router.replace('/');
-  };
 
   return (
     <>

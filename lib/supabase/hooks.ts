@@ -21,7 +21,7 @@ export function useSupabaseQuery<T>(
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<Error | null>(null);
-
+  /* eslint-disable react-hooks/use-memo, react-hooks/exhaustive-deps */
   const execute = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -39,6 +39,7 @@ export function useSupabaseQuery<T>(
   useEffect(() => {
     execute();
   }, [execute]);
+  /* eslint-enable react-hooks/use-memo, react-hooks/exhaustive-deps */
 
   return { data, loading, error, refetch: execute };
 }

@@ -16,9 +16,13 @@ import {
 } from 'lucide-react';
 import { SALARY_STRUCTURES } from '@/lib/mock-data/payroll';
 import { formatINR } from '@/lib/utils';
+import { CONTRACTS } from '@/lib/mock-data/contracts';
+import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { peoplePayQueries } from '@/lib/supabase/peoplepay360_supabase_queries';
 
 export function PayrunWizardModal() {
-  const { isPayrunWizardOpen, setIsPayrunWizardOpen, createPayrun, employees } = useApp();
+  const { isPayrunWizardOpen, setIsPayrunWizardOpen, createPayrun, employees,authenticated,companyId } = useApp();
+  const [eligibility,setEligibility]=useState<{employee_id:string;is_eligible:boolean;exclusion_reason:string|null}[]>([]);const [checking,setChecking]=useState(false);
 
   const [step, setStep] = useState<1 | 2>(1);
   const [name, setName] = useState('Regular Payrun - October 2026');
@@ -28,12 +32,12 @@ export function PayrunWizardModal() {
   const [employeeType, setEmployeeType] = useState('Full-Time Employees');
   const [structureId, setStructureId] = useState(SALARY_STRUCTURES[0].id);
 
-  if (!isPayrunWizardOpen) return null;
-
   const selectedStructure =
     SALARY_STRUCTURES.find((s) => s.id === structureId) || SALARY_STRUCTURES[0];
 
-  const estimatedGross = employees.reduce((sum, e) => sum + (e.monthlySalaryGross ?? e.baseSalary ?? 45000), 0);
+  React.useEffect(()=>{if(!isPayrunWizardOpen)return;let active=true;const load=async()=>{setChecking(true);try{if(authenticated&&companyId){const client=getSupabaseBrowserClient();if(client){if(process.env.NEXT_PUBLIC_CONTRACT_PAYROLL_GUARDS_ENABLED==='true'){const rows=await peoplePayQueries.payrollContractEligibility(client,companyId,startDate,endDate);if(active)setEligibility(rows??[])}else{const {data:contracts}=await client.from('contracts').select('employee_id,start_date,end_date,status,approved_at,terminated_at').eq('company_id',companyId);const rows=employees.map(employee=>{const contract=contracts?.find(item=>item.employee_id===employee.id&&Boolean(item.approved_at||item.status==='running')&&item.status!=='draft'&&item.status!=='terminated'&&item.start_date<=endDate&&(!item.end_date||item.end_date>=startDate)&&(!item.terminated_at||item.terminated_at.slice(0,10)>=startDate));return {employee_id:employee.id,is_eligible:Boolean(contract),exclusion_reason:contract?null:'No approved contract covers this payroll period'}});if(active)setEligibility(rows)}}}else{const rows=employees.map(employee=>{const contract=CONTRACTS.find(item=>item.employeeId===employee.id&&Boolean(item.approvedAt||item.status==='running')&&item.status!=='draft'&&item.status!=='terminated'&&item.startDate<=endDate&&(!item.endDate||item.endDate>=startDate));return {employee_id:employee.id,is_eligible:Boolean(contract),exclusion_reason:contract?null:'No approved contract covers this payroll period'}});if(active)setEligibility(rows)}}catch{if(active)setEligibility(employees.map(employee=>({employee_id:employee.id,is_eligible:false,exclusion_reason:'Contract eligibility could not be verified'})))}finally{if(active)setChecking(false)}};void load();return()=>{active=false}},[authenticated,companyId,startDate,endDate,isPayrunWizardOpen,employees]);
+  const eligibleIds=new Set(eligibility.filter(item=>item.is_eligible).map(item=>item.employee_id));const eligibleEmployees=employees.filter(employee=>eligibleIds.has(employee.id));const excluded=eligibility.filter(item=>!item.is_eligible);
+  const estimatedGross = eligibleEmployees.reduce((sum, e) => sum + (e.monthlySalaryGross ?? e.baseSalary ?? 45000), 0);
   const estimatedDeductions = Math.round(estimatedGross * 0.068);
   const estimatedNet = estimatedGross - estimatedDeductions;
 
@@ -46,13 +50,15 @@ export function PayrunWizardModal() {
       employeeType,
       salaryStructureId: selectedStructure.id,
       salaryStructureName: selectedStructure.name,
-      employeeCount: employees.length,
+      employeeCount: eligibleEmployees.length,
       grossTotal: estimatedGross,
       totalDeductions: estimatedDeductions,
       netTotal: estimatedNet,
       warningCount: 1,
     });
   };
+
+  if (!isPayrunWizardOpen) return null;
 
   return (
     <AnimatePresence>
@@ -200,7 +206,7 @@ export function PayrunWizardModal() {
                     Eligible Employees
                   </span>
                   <strong className="text-base font-bold text-[#28262D] tabular-nums">
-                    {employees.length} Staff
+                    {checking?'…':eligibleEmployees.length} Staff
                   </strong>
                 </div>
 
@@ -235,7 +241,7 @@ export function PayrunWizardModal() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-[#F4F3F5]">
-                    {employees.slice(0, 5).map((e) => (
+                    {eligibleEmployees.slice(0, 5).map((e) => (
                       <tr key={e.id}>
                         <td className="py-2 px-3 font-medium">{e.name}</td>
                         <td className="py-2 px-3 tabular-nums">{formatINR(e.monthlySalaryGross)}</td>
@@ -246,6 +252,7 @@ export function PayrunWizardModal() {
                   </tbody>
                 </table>
               </div>
+              {excluded.length>0&&<div className="rounded-[10px] border border-[#F6CBC8] bg-[#FDF1F0] p-3 text-[#8F3E39]"><strong>{excluded.length} employee{excluded.length===1?'':'s'} excluded</strong><p className="mt-1">Expired, missing, draft, or non-covering contracts cannot produce payslips for this period.</p></div>}
 
               <div className="pt-4 flex items-center justify-between">
                 <button
@@ -260,7 +267,8 @@ export function PayrunWizardModal() {
                 <button
                   type="button"
                   onClick={handleFinish}
-                  className="px-5 py-2.5 bg-[#714B67] hover:bg-[#5C3C53] text-white font-bold rounded-[10px] shadow-xs flex items-center gap-1.5"
+                  disabled={checking||eligibleEmployees.length===0}
+                  className="px-5 py-2.5 bg-[#714B67] hover:bg-[#5C3C53] text-white font-bold rounded-[10px] shadow-xs flex items-center gap-1.5 disabled:opacity-50"
                 >
                   <CheckCircle2 className="w-4 h-4" />
                   <span>Confirm & Generate Draft Payrun</span>

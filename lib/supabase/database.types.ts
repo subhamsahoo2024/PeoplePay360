@@ -17,7 +17,7 @@ export type LocationVerificationStatus = 'verified' | 'outside_allowed_location'
 
 type CompanyRow = { id:string; name:string; legal_name:string|null; legal_address:string|null; currency_code:string; timezone:string; logo_path:string|null; organization_email_domain:string|null; employee_email_pattern:string; location_verification_enabled:boolean; outside_location_action:string; sandwich_leave_enabled:boolean; created_at:string; updated_at:string }
 type ProfileRow = { id:string; full_name:string; personal_email:string|null; phone:string|null; avatar_path:string|null; date_of_birth:string|null; address:Json; emergency_contact:Json; created_at:string; updated_at:string }
-type EmployeeRow = { id:string; company_id:string; user_id:string|null; employee_code:string; full_name:string; company_email:string; phone:string|null; department_id:string|null; position_id:string|null; manager_id:string|null; joining_date:string; exit_date:string|null; status:string; work_location:string|null; profile_photo_path:string|null; employment_category?:string; onboarding_status?:string; onboarding_completed_at?:string|null; onboarding_verified_by?:string|null; onboarding_verified_at?:string|null; pan_encrypted?:string|null; uan_encrypted?:string|null; created_at:string; updated_at:string }
+type EmployeeRow = { id:string; company_id:string; user_id:string|null; employee_code:string; full_name:string; company_email:string; phone:string|null; department_id:string|null; position_id:string|null; manager_id:string|null; joining_date:string; exit_date:string|null; status:string; work_location:string|null; profile_photo_path:string|null; employment_category?:string; onboarding_status?:string; onboarding_completed_at?:string|null; onboarding_verified_by?:string|null; onboarding_verified_at?:string|null; pan_encrypted?:string|null; uan_encrypted?:string|null; account_status?:string;must_change_password?:boolean;email_verified_at?:string|null;onboarding_submitted_at?:string|null;onboarding_reviewed_at?:string|null;onboarding_reviewed_by?:string|null;onboarding_rejection_reason?:string|null;onboarding_correction_reason?:string|null;onboarding_correction_fields?:Json;last_invitation_sent_at?:string|null; current_contract_id?:string|null; biometric_enrollment_required?:boolean; biometric_enrolled_at?:string|null; biometric_platform_unavailable_at?:string|null; created_at:string; updated_at:string }
 type RoleRow = { id:string; company_id:string; user_id:string; role:AppRole; created_at:string }
 type DepartmentRow = {id:string;company_id:string;name:string;code:string;manager_employee_id:string|null;is_active:boolean;created_at:string;updated_at:string};
 type JobPositionRow = {id:string;company_id:string;department_id:string|null;title:string;code:string;is_active:boolean;created_at:string;updated_at:string};
@@ -58,6 +58,12 @@ type AttendanceCorrectionRequestRow = { id:string; company_id:string; employee_i
 type NotificationRow = { id:string; company_id:string; user_id:string; title:string; message:string; type:string; action_url:string|null; metadata:Json; read_at:string|null; created_at:string };
 type PayrollSimulationRow = { id:string; company_id:string; created_by:string|null; title:string; simulation_params:Json; status:string; total_cost_diff:number; created_at:string };
 type PayrollSimulationImpactRow = { id:string; simulation_id:string; employee_id:string|null; current_gross:number; simulated_gross:number; diff:number; created_at:string };
+type WebAuthnCredentialRow = {id:string;company_id:string;employee_id:string;user_id:string;credential_id:string;public_key:string;counter:number;transports:string[];device_label:string;backed_up:boolean;revoked_at:string|null;last_used_at:string|null;created_at:string};
+type WebAuthnChallengeRow = {id:string;user_id:string;purpose:'registration'|'authentication';challenge:string;expires_at:string;consumed_at:string|null;created_at:string};
+type FaceEnrollmentRow = {id:string;company_id:string;employee_id:string;encrypted_template:string;template_checksum:string;model_name:string;model_version:string;sample_count:number;consent_version:string;consented_at:string;revoked_at:string|null;enrolled_by:string;created_at:string};
+type BiometricVerificationEventRow = {id:string;company_id:string;employee_id:string;method:'face'|'webauthn';outcome:'verified'|'rejected'|'unavailable'|'cancelled';confidence:number|null;liveness_passed:boolean|null;model_version:string|null;credential_id:string|null;occurred_at:string;metadata:Json};
+type DemoEmailOutboxRow={id:string;company_id:string;recipient_email:string;cc_emails:string[];subject:string;safe_html_body:string;email_type:string;delivery_status:string;action_url:string|null;created_by:string|null;created_at:string;opened_at:string|null};
+type AccountInvitationRow={id:string;company_id:string;employee_id:string;auth_user_id:string|null;personal_email:string;organization_email:string;requested_role:AppRole;status:string;verification_method:string;token_hash:string;expires_at:string;sent_at:string|null;verified_at:string|null;activated_at:string|null;created_by:string;created_at:string;updated_at:string};
 
 export interface Database {
   public: {
@@ -105,6 +111,12 @@ export interface Database {
       notifications: Table<NotificationRow>;
       payroll_simulations: Table<PayrollSimulationRow>;
       payroll_simulation_impacts: Table<PayrollSimulationImpactRow>;
+      employee_webauthn_credentials: Table<WebAuthnCredentialRow>;
+      webauthn_challenges: Table<WebAuthnChallengeRow>;
+      employee_face_enrollments: Table<FaceEnrollmentRow>;
+      biometric_verification_events: Table<BiometricVerificationEventRow>;
+      demo_email_outbox: Table<DemoEmailOutboxRow>;
+      account_invitations: Table<AccountInvitationRow>;
     };
     Views: {
       v_employee_leave_summary: { Row: { employee_id:string; company_id:string; leave_year:number; approved_unpaid_days:number; pending_unpaid_days:number; estimated_lop:number; actual_lop:number }; Relationships: [] };
@@ -118,6 +130,8 @@ export interface Database {
       prepare_payroll_bank_export: { Args:{ p_pay_run_id:string; p_company_bank_account_id:string; p_template_id:string; p_batch_reference:string; p_payment_date:string }; Returns:Json };
       defer_payslip_deduction: {Args:{p_payslip_line_id:string;p_deferred_amount:number;p_carry_forward_period:string;p_reason:string};Returns:PayslipRow};
       create_work_schedule: {Args:{p_company_id:string;p_name:string;p_timezone:string;p_effective_from:string;p_effective_to?:string|null;p_assignment_type:'company'|'department'|'employee';p_assignment_id?:string|null;p_is_company_default:boolean;p_days:Json};Returns:string};
+      assign_employee_contract: {Args:{p_contract_id:string};Returns:ContractRow};
+      payroll_contract_eligibility: {Args:{p_company_id:string;p_period_start:string;p_period_end:string};Returns:{employee_id:string;contract_id:string|null;is_eligible:boolean;eligible_from:string|null;eligible_to:string|null;exclusion_reason:string|null}[]};
       record_attendance_with_location: { Args:{p_company_id:string;p_event_type:string;p_method:string;p_latitude?:number;p_longitude?:number;p_accuracy_meters?:number;p_permission_denied?:boolean;p_device_id?:string}; Returns:Json };
       preview_leave_impact_v2: { Args:{p_company_id:string;p_leave_type_id:string;p_start_date:string;p_end_date:string}; Returns:Json };
       calculate_overtime_entry: { Args:{p_attendance_id:string}; Returns:OvertimeEntryRow };

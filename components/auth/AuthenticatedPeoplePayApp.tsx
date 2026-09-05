@@ -37,12 +37,13 @@ export function AuthenticatedPeoplePayApp() {
           return;
         }
 
-        // Get employee record
-        const { data: employee, error: empErr } = await client
-          .from('employees')
-          .select('id, company_id, full_name, status, employee_code')
-          .eq('user_id', user.id)
-          .maybeSingle();
+        // Keep login compatible with databases where the optional biometric
+        // migration has not been applied yet.
+        const biometricsEnabled=process.env.NEXT_PUBLIC_BIOMETRICS_ENABLED==='true';
+        const employeeResult=biometricsEnabled
+          ? await client.from('employees').select('id, company_id, full_name, status, employee_code, biometric_enrollment_required').eq('user_id',user.id).maybeSingle()
+          : await client.from('employees').select('id, company_id, full_name, status, employee_code').eq('user_id',user.id).maybeSingle();
+        const employee=employeeResult.data;const empErr=employeeResult.error;
 
         if (empErr || !employee) {
           router.replace('/');
@@ -52,6 +53,11 @@ export function AuthenticatedPeoplePayApp() {
         // Check onboarding
         if (employee.status === 'onboarding') {
           router.replace('/onboarding');
+          return;
+        }
+
+        if (biometricsEnabled&&'biometric_enrollment_required' in employee&&employee.biometric_enrollment_required) {
+          router.replace('/enrollment');
           return;
         }
 

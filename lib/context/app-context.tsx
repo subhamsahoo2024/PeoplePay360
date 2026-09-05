@@ -642,6 +642,7 @@ export function AppProvider({
 
   const handleSignOut = async () => {
     try {
+      sessionStorage.removeItem('peoplepay360-demo-session');
       const supabase = getSupabaseBrowserClient();
       if (supabase) {
         await supabase.auth.signOut();

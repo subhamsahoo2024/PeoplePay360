@@ -208,7 +208,7 @@ export default function ApprovalStatusPage() {
             ) : (
               <div className="text-center pt-2">
                 <p className="text-[11px] text-[#74717A]">
-                  Need urgent assistance? Contact HR at <a href="mailto:hr@peoplepay360.test" className="text-[#714B67] underline font-semibold">hr@peoplepay360.test</a>
+                  Need urgent assistance? Contact HR at <a href="mailto:sri7685234360.test" className="text-[#714B67] underline font-semibold">sri7685234360.test</a>
                 </p>
               </div>
             )}

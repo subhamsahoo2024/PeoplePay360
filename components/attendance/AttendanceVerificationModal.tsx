@@ -20,6 +20,9 @@ import {
 import { cn } from '@/lib/utils';
 import { verifyLocation } from '@/lib/domain/peoplepay-calculations';
 import type { AttendanceLocationCapture } from '@/lib/types';
+import { startAuthentication } from '@simplewebauthn/browser';
+import { FaceLandmarker,FilesetResolver } from '@mediapipe/tasks-vision';
+import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 
 const DEMO_OFFICE = {
   latitude: 12.9716,
@@ -162,35 +165,10 @@ export function AttendanceVerificationModal() {
     setIsCheckInModalOpen(false);
   };
 
-  // Simulate Face Scan flow: Detecting -> Verifying -> Verified
-  const triggerFaceScan = () => {
-    setFaceStatus('detecting');
-    setTimeout(() => {
-      setFaceStatus('verifying');
-      setTimeout(() => {
-        setFaceStatus('verified');
-        setTimeout(() => {
-          stopCamera();
-          handleCheckInOut('face',location??undefined);
-        }, 1200);
-      }, 1500);
-    }, 1200);
-  };
+  const biometricApi=async(path:string,init:RequestInit={})=>{const client=getSupabaseBrowserClient();if(!client)throw new Error('Supabase is not configured');const session=(await client.auth.getSession()).data.session;if(!session)throw new Error('Your session expired');const response=await fetch(path,{...init,headers:{'content-type':'application/json',authorization:`Bearer ${session.access_token}`,...init.headers}});const body=await response.json();if(!response.ok)throw new Error(body.error?.message||'Verification failed');return body};
+  const triggerFaceScan = async () => {setFaceStatus('detecting');setCameraError(null);try{const video=videoRef.current;if(!video||video.readyState<2)throw new Error('Camera is not ready');const vision=await FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm');const landmarker=await FaceLandmarker.createFromOptions(vision,{baseOptions:{modelAssetPath:'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/latest/face_landmarker.task',delegate:'GPU'},runningMode:'VIDEO',numFaces:1});const samples:number[][]=[];for(let index=0;index<3;index++){await new Promise(resolve=>window.setTimeout(resolve,400));const landmarks=landmarker.detectForVideo(video,performance.now()).faceLandmarks[0];if(!landmarks)throw new Error('Face not detected. Center your face in good light.');const left=landmarks[33],right=landmarks[263],nose=landmarks[1],scale=Math.max(Math.hypot(right.x-left.x,right.y-left.y),.001);samples.push(landmarks.flatMap(point=>[(point.x-nose.x)/scale,(point.y-nose.y)/scale,(point.z-nose.z)/scale]))}landmarker.close();const movement=Math.max(...samples.slice(1).map(sample=>Math.abs(sample[0]-samples[0][0])+Math.abs(sample[1]-samples[0][1])));if(movement<.00003)throw new Error('Liveness check failed. Turn your head slightly and retry.');const template=samples[0].map((_,coordinate)=>samples.reduce((sum,sample)=>sum+sample[coordinate],0)/samples.length);setFaceStatus('verifying');await biometricApi('/api/biometrics/face/verify',{method:'POST',body:JSON.stringify({template,livenessPassed:true})});setFaceStatus('verified');stopCamera();window.setTimeout(()=>handleCheckInOut('face',location??undefined),500)}catch(error){setFaceStatus('failed');setCameraError(error instanceof Error?error.message:'Face verification failed')}};
 
-  // Simulate Fingerprint Scan flow
-  const triggerBioScan = (failMode = false) => {
-    setBioStatus('scanning');
-    setTimeout(() => {
-      if (failMode) {
-        setBioStatus('error');
-      } else {
-        setBioStatus('matched');
-        setTimeout(() => {
-          handleCheckInOut('biometric',location??undefined);
-        }, 1000);
-      }
-    }, 1600);
-  };
+  const triggerBioScan = async () => {setBioStatus('scanning');try{const start=await biometricApi('/api/biometrics/webauthn/authenticate');const response=await startAuthentication({optionsJSON:start.options});await biometricApi('/api/biometrics/webauthn/authenticate',{method:'POST',body:JSON.stringify({challengeId:start.challengeId,response})});setBioStatus('matched');window.setTimeout(()=>handleCheckInOut('biometric',location??undefined),500)}catch(error){setBioStatus('error');setCameraError(error instanceof Error?error.message:'Laptop biometric verification failed')}};
 
   // Manual submit
   const handleManualSubmit = (e: React.FormEvent) => {
@@ -452,20 +430,11 @@ export function AttendanceVerificationModal() {
                   <button
                     type="button"
                     disabled={bioStatus === 'scanning'}
-                    onClick={() => triggerBioScan(false)}
+                    onClick={triggerBioScan}
                     className="px-4 py-2 bg-[#714B67] hover:bg-[#5C3C53] text-white text-xs font-bold rounded-[10px] shadow-xs flex items-center gap-1.5 disabled:opacity-50"
                   >
                     <Fingerprint className="w-3.5 h-3.5" />
-                    Simulate Fingerprint Match
-                  </button>
-
-                  <button
-                    type="button"
-                    disabled={bioStatus === 'scanning'}
-                    onClick={() => triggerBioScan(true)}
-                    className="px-3 py-2 bg-[#F4F3F5] hover:bg-[#E4E1E5] text-[#74717A] text-xs font-medium rounded-[10px]"
-                  >
-                    Simulate Error
+                    Verify with laptop biometric
                   </button>
                 </div>
               </div>

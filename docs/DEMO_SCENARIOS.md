@@ -10,8 +10,8 @@ All demo user accounts use the default password: **`PeoplePay@360`**
 
 | Role | Name | Email | Primary Features Tested |
 |---|---|---|---|
-| **`admin`** | Vikramaditya Sharma | `admin@peoplepay360.demo` | Role Permissions Matrix, Biometric Devices, Audit Trail, System Config |
-| **`hr_manager`** | Priya Sundaram | `hr@peoplepay360.demo` | Employee Directory, Approvals Center, Contracts, Working Schedules, Medical Proofs |
+| **`admin`** | Sudeesh K | `admin@peoplepay360.demo` | Role Permissions Matrix, Biometric Devices, Audit Trail, System Config |
+| **`hr_manager`** | Priya Sundaram | `sri7685234@gmail.com` | Employee Directory, Approvals Center, Contracts, Working Schedules, Medical Proofs |
 | **`payroll_manager`** | Rajesh Kulkarni | `payroll.mgr@peoplepay360.demo` | Payruns Execution, Salary Structures, Statutory Rules, Overtime Policy, Reports |
 | **`payroll_user`** | Neha Gupta | `payroll.user@peoplepay360.demo` | Payruns Drafting, Bank Exports, Payslip Generation |
 | **`employee`** | Aravind Krishnan | `employee.aravind@peoplepay360.demo` | Check-in/out, Leave Requests, Payslips View, My Loans, Profile Updates |
@@ -48,7 +48,7 @@ The script is **idempotent** (safe to run multiple times without duplicating dat
 1. Log in as `employee.aravind@peoplepay360.demo`.
 2. Go to **Leave**, click **Apply for Leave**. Select "Casual Leave" and request 2 days.
 3. System calculates Sandwich policy impact via `preview_leave_impact_v2` RPC. Submit request.
-4. Log out and log in as `hr@peoplepay360.demo`.
+4. Log out and log in as `sri7685234@gmail.com`.
 5. Open **Approvals Center**, find Aravind's leave request, click **Approve**.
 6. Switch back to Employee view to observe updated leave balances.
 

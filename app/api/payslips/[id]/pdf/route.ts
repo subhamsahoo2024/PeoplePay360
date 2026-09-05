@@ -21,6 +21,9 @@ export async function POST(request:NextRequest,{params}:{params:Promise<{id:stri
     const {data:row,error}=await scoped.from('payslips').select('*').eq('id',id).single();
     if(error||!row)return NextResponse.json({error:{code:'NOT_FOUND',message:'Payslip not found'}},{status:404});
 
+    const {data:coveredContract}=row.contract_id?await service.from('contracts').select('id').eq('id',row.contract_id).eq('employee_id',row.employee_id).eq('company_id',row.company_id).not('approved_at','is',null).lte('start_date',row.period_end).or(`end_date.is.null,end_date.gte.${row.period_start}`).or(`terminated_at.is.null,terminated_at.gte.${row.period_start}T00:00:00Z`).maybeSingle():{data:null};
+    if(!coveredContract)return NextResponse.json({error:{code:'CONTRACT_NOT_ELIGIBLE',message:'This employee has no approved contract covering the payslip period. PDF generation is blocked.'}},{status:409});
+
     if(row.pdf_storage_path?.includes(`/${PDF_TEMPLATE_VERSION}/`)){const signed=await service.storage.from('payslips').createSignedUrl(row.pdf_storage_path,300);if(!signed.error)return NextResponse.json({signedUrl:signed.data.signedUrl,expiresIn:300})}
     const {data:roles}=await scoped.from('user_company_roles').select('role').eq('company_id',row.company_id).eq('user_id',userData.user.id);
     if(!roles?.some(r=>r.role==='payroll_manager'||r.role==='admin'))return NextResponse.json({error:{code:'FORBIDDEN',message:'Only Payroll Manager or Admin can generate a missing PDF'}},{status:403});

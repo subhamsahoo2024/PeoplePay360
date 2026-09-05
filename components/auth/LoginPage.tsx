@@ -10,6 +10,7 @@ import type { AppRole } from '@/lib/types';
 import { LoginVisual } from './LoginVisual';
 import { LoginTransition } from './LoginTransition';
 import { EMPLOYEE_DEMO_CREDENTIALS, isEmployeeDemoLogin } from '@/lib/auth/demo-credentials';
+import { getHighestRole, getRoleDashboardPath } from '@/lib/auth/role-routing';
 
 export function LoginPage() {
   const router = useRouter();
