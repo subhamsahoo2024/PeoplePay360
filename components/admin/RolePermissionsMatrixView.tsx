@@ -18,8 +18,8 @@ interface PermissionRow {
   category: string;
   employee: boolean;
   hr_manager: boolean;
-  hr_payroll_user: boolean;
-  hr_payroll_manager: boolean;
+  payroll_user: boolean;
+  payroll_manager: boolean;
   admin: boolean;
 }
 
@@ -29,8 +29,8 @@ const MATRIX: PermissionRow[] = [
     category: 'Attendance',
     employee: true,
     hr_manager: true,
-    hr_payroll_user: true,
-    hr_payroll_manager: true,
+    payroll_user: true,
+    payroll_manager: true,
     admin: true,
   },
   {
@@ -38,8 +38,8 @@ const MATRIX: PermissionRow[] = [
     category: 'Attendance',
     employee: true,
     hr_manager: true,
-    hr_payroll_user: true,
-    hr_payroll_manager: true,
+    payroll_user: true,
+    payroll_manager: true,
     admin: true,
   },
   {
@@ -47,8 +47,8 @@ const MATRIX: PermissionRow[] = [
     category: 'Attendance',
     employee: false,
     hr_manager: true,
-    hr_payroll_user: false,
-    hr_payroll_manager: true,
+    payroll_user: false,
+    payroll_manager: true,
     admin: true,
   },
   {
@@ -56,8 +56,8 @@ const MATRIX: PermissionRow[] = [
     category: 'Leaves',
     employee: true,
     hr_manager: true,
-    hr_payroll_user: true,
-    hr_payroll_manager: true,
+    payroll_user: true,
+    payroll_manager: true,
     admin: true,
   },
   {
@@ -65,8 +65,8 @@ const MATRIX: PermissionRow[] = [
     category: 'Leaves',
     employee: false,
     hr_manager: true,
-    hr_payroll_user: false,
-    hr_payroll_manager: false,
+    payroll_user: false,
+    payroll_manager: false,
     admin: true,
   },
   {
@@ -74,8 +74,8 @@ const MATRIX: PermissionRow[] = [
     category: 'Profile',
     employee: true,
     hr_manager: true,
-    hr_payroll_user: true,
-    hr_payroll_manager: true,
+    payroll_user: true,
+    payroll_manager: true,
     admin: true,
   },
   {
@@ -83,8 +83,8 @@ const MATRIX: PermissionRow[] = [
     category: 'Profile',
     employee: false,
     hr_manager: true,
-    hr_payroll_user: false,
-    hr_payroll_manager: false,
+    payroll_user: false,
+    payroll_manager: false,
     admin: true,
   },
   {
@@ -92,8 +92,8 @@ const MATRIX: PermissionRow[] = [
     category: 'Payroll',
     employee: false,
     hr_manager: false,
-    hr_payroll_user: true,
-    hr_payroll_manager: true,
+    payroll_user: true,
+    payroll_manager: true,
     admin: true,
   },
   {
@@ -101,8 +101,8 @@ const MATRIX: PermissionRow[] = [
     category: 'Payroll',
     employee: false,
     hr_manager: false,
-    hr_payroll_user: false,
-    hr_payroll_manager: true,
+    payroll_user: false,
+    payroll_manager: true,
     admin: true,
   },
   {
@@ -110,8 +110,8 @@ const MATRIX: PermissionRow[] = [
     category: 'Payroll',
     employee: false,
     hr_manager: false,
-    hr_payroll_user: false,
-    hr_payroll_manager: true,
+    payroll_user: false,
+    payroll_manager: true,
     admin: true,
   },
   {
@@ -119,8 +119,8 @@ const MATRIX: PermissionRow[] = [
     category: 'Payroll',
     employee: false,
     hr_manager: false,
-    hr_payroll_user: false,
-    hr_payroll_manager: true,
+    payroll_user: false,
+    payroll_manager: true,
     admin: true,
   },
   {
@@ -128,8 +128,8 @@ const MATRIX: PermissionRow[] = [
     category: 'Admin',
     employee: false,
     hr_manager: false,
-    hr_payroll_user: false,
-    hr_payroll_manager: false,
+    payroll_user: false,
+    payroll_manager: false,
     admin: true,
   },
   {
@@ -137,8 +137,8 @@ const MATRIX: PermissionRow[] = [
     category: 'Admin',
     employee: false,
     hr_manager: false,
-    hr_payroll_user: false,
-    hr_payroll_manager: true,
+    payroll_user: false,
+    payroll_manager: true,
     admin: true,
   },
 ];
@@ -214,7 +214,7 @@ export function RolePermissionsMatrixView() {
                   </td>
 
                   <td className="py-3.5 px-3 text-center">
-                    {row.hr_payroll_user ? (
+                    {row.payroll_user ? (
                       <span className="inline-flex p-1 rounded-full bg-[#EBF6F0] text-[#438A6B]">
                         <Check className="w-3.5 h-3.5" />
                       </span>
@@ -226,7 +226,7 @@ export function RolePermissionsMatrixView() {
                   </td>
 
                   <td className="py-3.5 px-3 text-center">
-                    {row.hr_payroll_manager ? (
+                    {row.payroll_manager ? (
                       <span className="inline-flex p-1 rounded-full bg-[#EBF6F0] text-[#438A6B]">
                         <Check className="w-3.5 h-3.5" />
                       </span>

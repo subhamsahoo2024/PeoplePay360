@@ -107,4 +107,4 @@ export function contractsOverlap(a:{startDate:string;endDate?:string},b:{startDa
 }
 
 export function compensationLabel(category:string){return category==='intern'?'Monthly Stipend':'Monthly Salary'}
-export function canManageOvertime(role:string){return role==='hr_payroll_manager'||role==='admin'}
+export function canManageOvertime(role:string){return role==='payroll_manager'||role==='admin'}

@@ -42,7 +42,7 @@ export function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
           { id: 'approvals', label: 'Approvals', icon: CalendarCheck },
         ]
       : []),
-    ...(currentRole === 'hr_payroll_user' || currentRole === 'hr_payroll_manager' || currentRole === 'admin'
+    ...(currentRole === 'payroll_user' || currentRole === 'payroll_manager' || currentRole === 'admin'
       ? [
           { id: 'payruns', label: 'Payruns', icon: FileText },
           { id: 'company_loans', label: 'Loan Deductions', icon: CreditCard },

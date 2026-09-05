@@ -39,12 +39,12 @@ export function RoleSwitcherModal({ isOpen, onClose }: RoleSwitcherModalProps) {
       icon: <Briefcase className="w-5 h-5 text-[#438A6B]" />,
       access: 'HR Operations & Approvals',
     },
-    hr_payroll_user: {
+    payroll_user: {
       desc: 'Full HR + Payrun 2-step wizard, draft payslip review, read-only structures/rules, reports.',
       icon: <Calculator className="w-5 h-5 text-[#D49525]" />,
       access: 'Payroll Processing (Read-Only Rules)',
     },
-    hr_payroll_manager: {
+    payroll_manager: {
       desc: 'Full Payroll CRUD: manage structures and rules, compute and validate payruns, review readiness, and export reports.',
       icon: <Shield className="w-5 h-5 text-[#714B67]" />,
       access: 'Full Payroll Authority',

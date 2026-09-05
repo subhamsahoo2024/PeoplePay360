@@ -1,9 +1,14 @@
 export type AppRole =
   | 'employee'
   | 'hr_manager'
-  | 'hr_payroll_user'
-  | 'hr_payroll_manager'
+  | 'payroll_user'
+  | 'payroll_manager'
   | 'admin';
+
+/** @deprecated Use 'payroll_user' instead */
+export type LegacyPayrollUser = 'payroll_user';
+/** @deprecated Use 'payroll_manager' instead */
+export type LegacyPayrollManager = 'payroll_manager';
 
 export interface User {
   id: string;

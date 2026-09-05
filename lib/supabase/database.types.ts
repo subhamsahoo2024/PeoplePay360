@@ -1,5 +1,5 @@
 // Generated-compatible Supabase type snapshot for the PeoplePay360 schema after
-// 20260905122000. Regenerate from a linked project with `npm run db:types`.
+// 20260905130000. Regenerate from a linked project with `npm run db:types`.
 
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[];
 type Table<Row extends Record<string, any>, Insert extends Record<string, any> = Partial<Row>> = {
@@ -27,6 +27,8 @@ type BankAccountRow = { id:string; company_id:string; employee_id:string; accoun
 type ContractRow = { id:string; company_id:string; employee_id:string; salary_structure_id:string; working_schedule_id:string|null; start_date:string; end_date:string|null; monthly_ctc:number; monthly_gross:number; basic_salary:number; allowance_config:Json; is_active:boolean; status:ContractStatus; approved_at:string|null; approved_by:string|null; terminated_at:string|null; termination_reason:string|null; created_at:string; updated_at:string }
 type LeaveTypeRow = { id:string; company_id:string; name:string; code:string; is_paid:boolean; annual_allocation:number; carry_forward_limit:number; proof_required_after_days:number|null; is_active:boolean; created_at:string; updated_at:string }
 type LeaveRequestRow = { id:string; company_id:string; employee_id:string; leave_type_id:string; start_date:string; end_date:string; requested_days:number; reason:string; status:RequestStatus; proof_status:string; estimated_unpaid_deduction:number; approver_id:string|null; reviewed_at:string|null; reviewer_note:string|null; normal_working_days:number|null; sandwich_days:number; total_chargeable_days:number|null; sandwich_policy_id:string|null; rejected_by:string|null; rejected_at:string|null; rejection_reason:string|null; created_at:string; updated_at:string }
+type AttendanceRecordRow = { id:string; company_id:string; employee_id:string; date:string; check_in:string|null; check_out:string|null; status:string; total_hours:number; overtime_hours:number; location:string|null; check_in_ip:string|null; created_at:string; updated_at:string }
+type PayRunRow = { id:string; company_id:string; period_start:string; period_end:string; status:string; total_employees:number; total_gross:number; total_deductions:number; total_net:number; created_by:string|null; created_at:string; updated_at:string }
 type PayslipRow = { id:string; company_id:string; pay_run_id:string; employee_id:string; contract_id:string|null; period_start:string; period_end:string; paid_days:number; unpaid_leave_days:number; gross_amount:number; deduction_amount:number; employer_contribution:number; net_amount:number; currency_code:string; status:string; pdf_storage_path:string|null; explanation:Json; generated_at:string|null; overtime_minutes:number; overtime_amount:number; actual_unpaid_leave_deduction:number; pdf_checksum:string|null; finalized_by:string|null; finalized_at:string|null; created_at:string; updated_at:string }
 type PayslipLineRow = { id:string; company_id:string; payslip_id:string; salary_rule_id:string|null; code:string; name:string; category:'earning'|'deduction'|'employer_contribution'|'reimbursement'; quantity:number; rate:number; base_amount:number; amount:number; calculation_note:string|null; sequence:number; created_at:string }
 type LoanRow = { id:string; company_id:string; employee_id:string; loan_number:string; principal_amount:number; annual_interest_rate:number; interest_method:string; tenure_months:number; preferred_monthly_deduction:number; disbursed_amount:number; disbursed_on:string|null; outstanding_principal:number; accrued_interest:number; outstanding_interest:number; status:string; closed_at:string|null; closure_type:string|null; closure_reference:string|null; approved_by:string|null; approved_at:string|null; created_at:string; updated_at:string }
@@ -50,6 +52,11 @@ type BankExportItemRow = { id:string; export_id:string; payroll_payment_id:strin
 type PayrollPaymentRow = { id:string; company_id:string; pay_run_id:string; payslip_id:string; employee_id:string; bank_account_id:string|null; amount:number; payment_method:string; status:string; scheduled_on:string|null; paid_at:string|null; bank_reference:string|null; failure_reason:string|null; created_by:string|null; created_at:string; updated_at:string };
 type AuditRow = { id:number; company_id:string|null; actor_user_id:string|null; action:string; entity_table:string; entity_id:string; summary:Json; ip_address:string|null; created_at:string };
 type DeductionDeferralRow = {id:string;company_id:string;employee_id:string;payslip_id:string;payslip_line_id:string;original_amount:number;deferred_amount:number;carry_forward_period:string;reason:string;status:string;created_by:string;created_at:string};
+type ProfileUpdateRequestRow = { id:string; company_id:string; employee_id:string; requested_changes:Json; field_category:string; status:RequestStatus; reviewer_id:string|null; rejection_reason:string|null; created_at:string; updated_at:string };
+type AttendanceCorrectionRequestRow = { id:string; company_id:string; employee_id:string; attendance_date:string; requested_check_in:string|null; requested_check_out:string|null; reason:string; status:RequestStatus; reviewer_id:string|null; rejection_reason:string|null; created_at:string; updated_at:string };
+type NotificationRow = { id:string; company_id:string; user_id:string; title:string; message:string; type:string; action_url:string|null; metadata:Json; read_at:string|null; created_at:string };
+type PayrollSimulationRow = { id:string; company_id:string; created_by:string|null; title:string; simulation_params:Json; status:string; total_cost_diff:number; created_at:string };
+type PayrollSimulationImpactRow = { id:string; simulation_id:string; employee_id:string|null; current_gross:number; simulated_gross:number; diff:number; created_at:string };
 
 export interface Database {
   public: {
@@ -66,6 +73,8 @@ export interface Database {
       contracts: Table<ContractRow>;
       leave_types: Table<LeaveTypeRow>;
       leave_requests: Table<LeaveRequestRow>;
+      attendance_records: Table<AttendanceRecordRow>;
+      pay_runs: Table<PayRunRow>;
       payslips: Table<PayslipRow>;
       payslip_lines: Table<PayslipLineRow>;
       employee_loans: Table<LoanRow>;
@@ -89,6 +98,11 @@ export interface Database {
       payroll_payments: Table<PayrollPaymentRow>;
       audit_logs: Table<AuditRow>;
       payroll_deduction_deferrals: Table<DeductionDeferralRow>;
+      profile_update_requests: Table<ProfileUpdateRequestRow>;
+      attendance_correction_requests: Table<AttendanceCorrectionRequestRow>;
+      notifications: Table<NotificationRow>;
+      payroll_simulations: Table<PayrollSimulationRow>;
+      payroll_simulation_impacts: Table<PayrollSimulationImpactRow>;
     };
     Views: {
       v_employee_leave_summary: { Row: { employee_id:string; company_id:string; leave_year:number; approved_unpaid_days:number; pending_unpaid_days:number; estimated_lop:number; actual_lop:number }; Relationships: [] };

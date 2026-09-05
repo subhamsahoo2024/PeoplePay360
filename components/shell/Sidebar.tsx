@@ -103,7 +103,7 @@ export function Sidebar() {
     { id: 'salary_structures', label: 'Salary Structures', icon: Layers },
     { id: 'salary_rules', label: 'Salary Rules', icon: Sliders },
     { id: 'overtime_policy', label: 'Overtime Policy', icon: Clock },
-    ...(currentRole === 'hr_payroll_manager' || currentRole === 'admin'
+    ...(currentRole === 'payroll_manager' || currentRole === 'admin'
       ? [{ id: 'readiness', label: 'Readiness Score', icon: ShieldCheck }]
       : []),
     { id: 'reports', label: 'Payroll Reports', icon: BarChart3 },
@@ -166,8 +166,8 @@ export function Sidebar() {
     </div>
   );
 
-  const isHR = currentRole === 'hr_manager' || currentRole === 'hr_payroll_user' || currentRole === 'hr_payroll_manager' || currentRole === 'admin';
-  const isPayroll = currentRole === 'hr_payroll_user' || currentRole === 'hr_payroll_manager' || currentRole === 'admin';
+  const isHR = currentRole === 'hr_manager' || currentRole === 'payroll_user' || currentRole === 'payroll_manager' || currentRole === 'admin';
+  const isPayroll = currentRole === 'payroll_user' || currentRole === 'payroll_manager' || currentRole === 'admin';
   const isAdmin = currentRole === 'admin';
 
   return (

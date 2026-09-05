@@ -12,7 +12,7 @@ export function WorkingSchedulesView() {
   const [schedules, setSchedules] = React.useState<WorkingSchedule[]>(WORKING_SCHEDULES);
   const [isCreateOpen, setIsCreateOpen] = React.useState(false);
   const [expandedId, setExpandedId] = React.useState<string | null>(null);
-  const canCreate = ['hr_manager', 'hr_payroll_user', 'hr_payroll_manager', 'admin'].includes(currentRole);
+  const canCreate = ['hr_manager', 'payroll_user', 'payroll_manager', 'admin'].includes(currentRole);
 
   const handleCreated = (schedule: WorkingSchedule) => {
     setSchedules((current) => [schedule, ...current]);

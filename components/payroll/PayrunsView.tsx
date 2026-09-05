@@ -77,7 +77,7 @@ export function PayrunsView() {
     }
   };
 
-  const isPayrollManagerOrAdmin = currentRole === 'hr_payroll_manager' || currentRole === 'admin';
+  const isPayrollManagerOrAdmin = currentRole === 'payroll_manager' || currentRole === 'admin';
 
   return (
     <div className="space-y-6">

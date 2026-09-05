@@ -27,7 +27,7 @@ export function SalaryStructuresView() {
     currentRole,
   } = useApp();
 
-  const isReadOnly = currentRole === 'hr_payroll_user';
+  const isReadOnly = currentRole === 'payroll_user';
   const [selectedStructure, setSelectedStructure] = useState<SalaryStructure | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [formData, setFormData] = useState<Partial<SalaryStructure>>({});

@@ -6,7 +6,7 @@ import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { peoplePayQueries } from '@/lib/supabase/peoplepay360_supabase_queries';
 
 export function OvertimePolicyView(){
-  const {currentRole,showToast}=useApp();const canEdit=currentRole==='hr_payroll_manager'||currentRole==='admin';
+  const {currentRole,showToast}=useApp();const canEdit=currentRole==='payroll_manager'||currentRole==='admin';
   const [saving,setSaving]=React.useState(false);const [policy,setPolicy]=React.useState({enabled:true,payEnabled:true,minimumMinutes:30,maxDaily:4,maxMonthly:40,rounding:15,multiplier:1.5,base:'basic',requiresApproval:true,categories:['full_time']});
   const field='w-full mt-1 px-3 py-2 rounded-[9px] border border-[#E4E1E5] bg-white text-xs disabled:bg-[#F4F3F5]';
   const save=async()=>{if(!canEdit)return;setSaving(true);try{const client=getSupabaseBrowserClient(),companyId=process.env.NEXT_PUBLIC_DEMO_COMPANY_ID;if(!client||!companyId)throw new Error('Connect Supabase and configure NEXT_PUBLIC_DEMO_COMPANY_ID to save this policy.');await peoplePayQueries.saveOvertimePolicy(client,{company_id:companyId,version:Date.now(),enabled:policy.enabled,pay_enabled:policy.payEnabled,minimum_eligible_minutes:policy.minimumMinutes,max_hours_per_day:policy.maxDaily,max_hours_per_month:policy.maxMonthly,rounding_interval_minutes:policy.rounding,multiplier:policy.multiplier,calculation_base:policy.base,requires_manager_approval:policy.requiresApproval,eligible_employment_categories:policy.categories,effective_from:new Date().toISOString().slice(0,10)});showToast('success','Overtime policy version saved');}catch(error){showToast('error',error instanceof Error?error.message:'Unable to save overtime policy')}finally{setSaving(false)}};

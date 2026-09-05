@@ -1,14 +1,27 @@
 'use client';
 
 import React from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { PeoplePayLogo } from '@/components/brand/PeoplePayLogo';
 import PeoplePayApp from '@/components/application/PeoplePayApp';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import type { AppRole } from '@/lib/types';
+
+export interface AuthenticatedSession {
+  userId: string;
+  email: string;
+  employeeId: string;
+  companyId: string;
+  fullName: string;
+  roles: AppRole[];
+  onboardingStatus: string;
+}
 
 export function AuthenticatedPeoplePayApp() {
   const router = useRouter();
-  const [authorized, setAuthorized] = React.useState(false);
+  const searchParams = useSearchParams();
+  const [session, setSession] = React.useState<AuthenticatedSession | null>(null);
+  const [loading, setLoading] = React.useState(true);
 
   React.useEffect(() => {
     const client = getSupabaseBrowserClient();
@@ -16,22 +29,76 @@ export function AuthenticatedPeoplePayApp() {
       router.replace('/');
       return;
     }
-    client.auth.getSession().then(({ data }) => {
-      if (data.session) setAuthorized(true);
-      else router.replace('/');
-    });
-  }, [router]);
+    (async () => {
+      try {
+        const { data: { user } } = await client.auth.getUser();
+        if (!user) {
+          router.replace('/');
+          return;
+        }
 
-  if (!authorized) {
+        // Get employee record
+        const { data: employee } = await client
+          .from('employees')
+          .select('id, company_id, full_name, status, onboarding_status, employee_code')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (!employee) {
+          router.replace('/');
+          return;
+        }
+
+        // Check onboarding
+        if (employee.onboarding_status !== 'verified' && employee.onboarding_status !== 'pending_verification') {
+          router.replace('/onboarding');
+          return;
+        }
+
+        // Get roles
+        const { data: roleData } = await client
+          .from('user_company_roles')
+          .select('role')
+          .eq('company_id', employee.company_id)
+          .eq('user_id', user.id);
+
+        const roles = (roleData || []).map(r => r.role as AppRole);
+        if (roles.length === 0) roles.push('employee');
+
+        setSession({
+          userId: user.id,
+          email: user.email || '',
+          employeeId: employee.id,
+          companyId: employee.company_id,
+          fullName: employee.full_name,
+          roles,
+          onboardingStatus: employee.onboarding_status,
+        });
+
+        // Apply view parameter from URL if present
+        const view = searchParams.get('view');
+        if (view) {
+          // The view will be picked up by AppProvider
+        }
+      } catch {
+        router.replace('/');
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [router, searchParams]);
+
+  if (loading || !session) {
     return (
       <main className="grid min-h-screen place-items-center bg-[#FBFAFB] p-6" aria-busy="true">
         <div className="flex flex-col items-center gap-3 text-center">
           <PeoplePayLogo size={44} />
           <p className="text-sm font-semibold text-[#714B67]">Verifying your session…</p>
+          <div className="w-6 h-6 rounded-full border-2 border-[#714B67] border-t-transparent animate-spin" />
         </div>
       </main>
     );
   }
 
-  return <PeoplePayApp />;
+  return <PeoplePayApp authenticatedSession={session} />;
 }

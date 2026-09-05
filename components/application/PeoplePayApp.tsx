@@ -155,7 +155,7 @@ function MainContent() {
 
 const emptySubscribe = () => () => {};
 
-export default function PeoplePayApp() {
+export default function PeoplePayApp({ authenticatedSession }: { authenticatedSession?: import('@/components/auth/AuthenticatedPeoplePayApp').AuthenticatedSession }) {
   const isMounted = React.useSyncExternalStore(
     emptySubscribe,
     () => true,
@@ -178,8 +178,9 @@ export default function PeoplePayApp() {
   }
 
   return (
-    <AppProvider>
+    <AppProvider authenticatedSession={authenticatedSession}>
       <MainContent />
     </AppProvider>
   );
 }
+

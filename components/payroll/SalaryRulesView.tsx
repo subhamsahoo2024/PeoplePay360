@@ -20,7 +20,7 @@ import { StatutoryContributionModal } from './StatutoryContributionModal';
 export function SalaryRulesView() {
   const { salaryRules, addSalaryRule, updateSalaryRule, currentRole } = useApp();
 
-  const isReadOnly = currentRole === 'hr_payroll_user';
+  const isReadOnly = currentRole === 'payroll_user';
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [formData, setFormData] = useState<Partial<SalaryRule>>({});
   const [formulaTestResult, setFormulaTestResult] = useState<string | null>(null);

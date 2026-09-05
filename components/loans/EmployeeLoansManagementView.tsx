@@ -41,7 +41,7 @@ export function EmployeeLoansManagementView() {
   }, []);
 
   const isHR = currentRole === 'hr_manager' || currentRole === 'admin';
-  const isPayroll = currentRole === 'hr_payroll_user' || currentRole === 'hr_payroll_manager' || currentRole === 'admin';
+  const isPayroll = currentRole === 'payroll_user' || currentRole === 'payroll_manager' || currentRole === 'admin';
 
   const handleApproveHR = async (loanId: string) => {
     try {

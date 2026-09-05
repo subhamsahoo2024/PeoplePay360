@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import {
   User,
   AppRole,
@@ -36,6 +36,8 @@ import {
 } from '@/lib/mock-data/devices-and-audit';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { assertPayrollCanFinalize } from '@/lib/domain/peoplepay-calculations';
+import type { AuthenticatedSession } from '@/components/auth/AuthenticatedPeoplePayApp';
+import { peoplePayQueries } from '@/lib/supabase/peoplepay360_supabase_queries';
 
 export interface ToastMessage {
   id: string;
@@ -97,7 +99,7 @@ interface AppContextType {
 
   // Real-time actions
   currentEmployee: Employee;
-  handleCheckInOut: (method: 'face' | 'biometric' | 'manual', location?:AttendanceLocationCapture) => void;
+  handleCheckInOut: (method: 'face' | 'biometric' | 'manual', location?: AttendanceLocationCapture) => void;
   submitLeaveRequest: (request: Partial<LeaveRequest>) => void;
   approveLeaveRequest: (id: string) => void;
   refuseLeaveRequest: (id: string, reason?: string) => void;
@@ -116,16 +118,79 @@ interface AppContextType {
   updateSalaryStructure: (id: string, structure: Partial<SalaryStructure>) => void;
   markNotificationRead: (id: string) => void;
   clearAllNotifications: () => void;
+
+  // Auth state
+  authenticated: boolean;
+  companyId: string | null;
+  signOut: () => void;
+  dataLoading: boolean;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
-export function AppProvider({ children }: { children: React.ReactNode }) {
-  const [currentUser, setCurrentUserState] = useState<User>(DEMO_USERS[0]);
-  useEffect(()=>{const client=getSupabaseBrowserClient();if(!client)return;client.auth.getSession().then(async({data})=>{if(!data.session)return;const employee=await client.from('employees').select('onboarding_status').eq('user_id',data.session.user.id).maybeSingle();if(employee.data&&employee.data.onboarding_status!=='verified'&&window.location.pathname!=='/onboarding')window.location.assign('/onboarding')})},[]);
-  const [activeTab, setActiveTab] = useState<string>('overview');
+/**
+ * Build a User object from a Supabase-authenticated session.
+ * Falls back to demo users when no session is available.
+ */
+function buildUserFromSession(session: AuthenticatedSession, roles: AppRole[]): User {
+  const highestRole = getHighestRole(roles);
+  const roleTitles: Record<AppRole, string> = {
+    employee: 'Employee',
+    hr_manager: 'HR Manager',
+    payroll_user: 'Payroll User',
+    payroll_manager: 'Payroll Manager',
+    admin: 'Admin',
+  };
+  return {
+    id: session.userId,
+    name: session.fullName,
+    email: session.email,
+    role: highestRole,
+    roleTitle: roleTitles[highestRole],
+    avatar: '',
+    employeeId: session.employeeId,
+    department: '',
+    jobPosition: '',
+  };
+}
+
+function getHighestRole(roles: AppRole[]): AppRole {
+  const priority: AppRole[] = ['admin', 'payroll_manager', 'payroll_user', 'hr_manager', 'employee'];
+  for (const role of priority) {
+    if (roles.includes(role)) return role;
+  }
+  return 'employee';
+}
+
+export function AppProvider({
+  children,
+  authenticatedSession,
+}: {
+  children: React.ReactNode;
+  authenticatedSession?: AuthenticatedSession;
+}) {
+  const isAuthenticated = !!authenticatedSession;
+  const client = getSupabaseBrowserClient();
+
+  // Build initial user from session or fall back to demo
+  const initialUser = authenticatedSession
+    ? buildUserFromSession(authenticatedSession, authenticatedSession.roles)
+    : DEMO_USERS[0];
+
+  const [currentUser, setCurrentUserState] = useState<User>(initialUser);
+  const [dataLoading, setDataLoading] = useState(isAuthenticated);
+
+  // Determine initial tab from URL
+  const [activeTab, setActiveTab] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('view') || 'overview';
+    }
+    return 'overview';
+  });
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
 
+  // State — start with mock data; replace with Supabase data when authenticated
   const [employees, setEmployees] = useState<Employee[]>(EMPLOYEES);
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>(INITIAL_ATTENDANCE);
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>(INITIAL_LEAVE_REQUESTS);
@@ -151,9 +216,246 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [selectedPayslip, setSelectedPayslip] = useState<Payslip | null>(INITIAL_PAYSLIPS[0]);
   const [selectedPayrun, setSelectedPayrun] = useState<Payrun | null>(INITIAL_PAYRUNS[1]);
 
+  // --- Supabase data loading for authenticated sessions ---
+  useEffect(() => {
+    if (!isAuthenticated || !client || !authenticatedSession) return;
+    let cancelled = false;
+
+    async function loadData() {
+      try {
+        const companyId = authenticatedSession!.companyId;
+
+        // Load employees
+        const { data: empData } = await client!.from('employees').select(`
+          id, company_id, user_id, employee_code, full_name, company_email, phone,
+          department_id, position_id, manager_id, joining_date, exit_date, status,
+          work_location, profile_photo_path, employment_category, onboarding_status
+        `).eq('company_id', companyId);
+
+        // Load departments
+        const { data: deptData } = await client!.from('departments').select('*').eq('company_id', companyId);
+
+        // Load positions
+        const { data: posData } = await client!.from('job_positions').select('*').eq('company_id', companyId);
+
+        // Load contracts
+        const { data: contractData } = await client!.from('contracts').select('*').eq('company_id', companyId);
+
+        // Load attendance for recent 30 days
+        const thirtyDaysAgo = new Date();
+        thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+        const { data: attendanceData } = await client!.from('attendance_records').select('*')
+          .eq('company_id', companyId)
+          .gte('work_date', thirtyDaysAgo.toISOString().split('T')[0])
+          .order('work_date', { ascending: false });
+
+        // Load leave requests
+        const { data: leaveData } = await client!.from('leave_requests').select('*')
+          .eq('company_id', companyId)
+          .order('created_at', { ascending: false });
+
+        // Load leave types
+        const { data: leaveTypes } = await client!.from('leave_types').select('*').eq('company_id', companyId);
+
+        if (cancelled) return;
+
+        // Map employees to frontend format
+        if (empData && deptData && posData) {
+          const deptMap = new Map(deptData.map(d => [d.id, d]));
+          const posMap = new Map(posData.map(p => [p.id, p]));
+          const empMap = new Map(empData.map(e => [e.id, e]));
+          const activeContractMap = new Map(
+            (contractData || []).filter(c => c.is_active || c.status === 'running')
+              .map(c => [c.employee_id, c])
+          );
+
+          const mappedEmployees: Employee[] = empData.map(emp => {
+            const dept = emp.department_id ? deptMap.get(emp.department_id) : null;
+            const pos = emp.position_id ? posMap.get(emp.position_id) : null;
+            const mgr = emp.manager_id ? empMap.get(emp.manager_id) : null;
+            const contract = activeContractMap.get(emp.id);
+
+            // Determine today's attendance
+            const todayStr = new Date().toISOString().split('T')[0];
+            const todayAtt = (attendanceData || []).find(
+              a => a.employee_id === emp.id && a.work_date === todayStr
+            );
+
+            let attStatus: Employee['currentAttendanceStatus'] = 'checked_out';
+            let checkInTime: string | null = null;
+            let checkOutTime: string | null = null;
+            if (todayAtt) {
+              checkInTime = todayAtt.check_in_at ? new Date(todayAtt.check_in_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }) : null;
+              checkOutTime = todayAtt.check_out_at ? new Date(todayAtt.check_out_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }) : null;
+              attStatus = todayAtt.check_out_at ? 'checked_out' : 'checked_in';
+            }
+
+            // Check leave
+            const onLeave = (leaveData || []).some(l =>
+              l.employee_id === emp.id &&
+              l.status === 'approved' &&
+              l.start_date <= todayStr &&
+              l.end_date >= todayStr
+            );
+            if (onLeave) attStatus = 'on_leave';
+
+            return {
+              id: emp.id,
+              employeeId: emp.employee_code,
+              name: emp.full_name,
+              avatar: emp.profile_photo_path || '',
+              email: emp.company_email,
+              phone: emp.phone || '',
+              personalEmail: '',
+              address: '',
+              jobPosition: pos?.title || '',
+              departmentId: emp.department_id || '',
+              departmentName: dept?.name || '',
+              reportingManagerId: emp.manager_id || '',
+              reportingManagerName: mgr?.full_name || '',
+              joiningDate: emp.joining_date,
+              employmentStatus: emp.status === 'active' ? 'active' : emp.status === 'onboarding' ? 'probation' : emp.status === 'notice' ? 'notice' : 'archived',
+              employeeType: emp.employment_category === 'intern' ? 'intern' : emp.employment_category === 'contractor' ? 'contractor' : 'full_time',
+              currentAttendanceStatus: attStatus,
+              todayCheckInTime: checkInTime,
+              todayCheckOutTime: checkOutTime,
+              bankAccountMasked: '',
+              ifscCode: '',
+              panNumber: '',
+              emergencyContact: { name: '', relation: '', phone: '' },
+              activeContractId: contract?.id || '',
+              workingScheduleId: contract?.working_schedule_id || '',
+              workingScheduleName: '',
+              paidLeaveBalance: 0,
+              unpaidLeaveTaken: 0,
+              pendingRequestsCount: 0,
+              attendanceException: false,
+              baseSalary: contract ? Number(contract.basic_salary) : 0,
+            };
+          });
+          setEmployees(mappedEmployees);
+        }
+
+        // Map attendance to frontend format
+        if (attendanceData) {
+          const mappedAttendance: AttendanceRecord[] = attendanceData.map(att => ({
+            id: att.id,
+            employeeId: att.employee_id,
+            employeeName: empData?.find(e => e.id === att.employee_id)?.full_name || '',
+            date: att.work_date,
+            checkIn: att.check_in_at ? new Date(att.check_in_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }) : null,
+            checkOut: att.check_out_at ? new Date(att.check_out_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true }) : null,
+            workedHours: (att.worked_minutes || 0) / 60,
+            overtimeHours: (att.overtime_minutes || 0) / 60,
+            status: (att.status as any) || 'present',
+            verificationMethod: (att.check_in_method as any) || 'manual',
+            exceptionStatus: 'normal',
+            notes: att.remarks || '',
+          }));
+          setAttendanceRecords(mappedAttendance);
+        }
+
+        // Map leave requests
+        if (leaveData && leaveTypes) {
+          const ltMap = new Map(leaveTypes.map(lt => [lt.id, lt]));
+          const mappedLeaves: LeaveRequest[] = leaveData.map(lr => {
+            const lt = ltMap.get(lr.leave_type_id);
+            return {
+              id: lr.id,
+              employeeId: lr.employee_id,
+              employeeName: empData?.find(e => e.id === lr.employee_id)?.full_name || '',
+              leaveTypeId: lr.leave_type_id,
+              leaveTypeName: lt?.name || '',
+              isPaid: lt?.is_paid ?? true,
+              startDate: lr.start_date,
+              endDate: lr.end_date,
+              isHalfDay: false,
+              reason: lr.reason,
+              calendarDays: lr.requested_days,
+              excludedWeekends: 0,
+              excludedHolidays: 0,
+              chargeableWorkingDays: lr.total_chargeable_days || lr.requested_days,
+              paidDaysUsed: lt?.is_paid ? lr.requested_days : 0,
+              unpaidDays: lt?.is_paid ? 0 : lr.requested_days,
+              estimatedDeduction: Number(lr.estimated_unpaid_deduction || 0),
+              estimatedNetSalaryAfter: 0,
+              approverId: lr.approver_id || '',
+              approverName: '',
+              status: lr.status as any,
+              appliedDate: lr.created_at?.split('T')[0] || '',
+              rejectionReason: lr.rejection_reason || undefined,
+              rejectedBy: lr.rejected_by || undefined,
+              rejectedAt: lr.rejected_at?.split('T')[0] || undefined,
+              sandwichDays: lr.sandwich_days || 0,
+              normalWorkingDays: lr.normal_working_days || undefined,
+            };
+          });
+          setLeaveRequests(mappedLeaves);
+        }
+
+        setDataLoading(false);
+      } catch (err) {
+        console.error('Failed to load Supabase data, falling back to mock:', err);
+        setDataLoading(false);
+      }
+    }
+
+    loadData();
+    return () => { cancelled = true; };
+  }, [isAuthenticated, client, authenticatedSession]);
+
+  // Onboarding check
+  useEffect(() => {
+    if (!client) return;
+    client.auth.getSession().then(async ({ data }) => {
+      if (!data.session) return;
+      const employee = await client.from('employees').select('onboarding_status')
+        .eq('user_id', data.session.user.id).maybeSingle();
+      if (employee.data && employee.data.onboarding_status !== 'verified' && window.location.pathname !== '/onboarding') {
+        window.location.assign('/onboarding');
+      }
+    });
+  }, [client]);
+
+  // Realtime subscription for notifications
+  useEffect(() => {
+    if (!client || !authenticatedSession) return;
+    const channel = client
+      .channel('app-notifications')
+      .on('postgres_changes', {
+        event: 'INSERT',
+        schema: 'public',
+        table: 'leave_requests',
+        filter: `company_id=eq.${authenticatedSession.companyId}`,
+      }, (payload) => {
+        const newNotif: AppNotification = {
+          id: `notif-${Date.now()}`,
+          title: 'Leave Request Update',
+          message: 'A leave request has been submitted or updated.',
+          type: 'leave',
+          timestamp: new Date().toISOString(),
+          read: false,
+        };
+        setNotifications(prev => [newNotif, ...prev]);
+      })
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'attendance_records',
+        filter: `company_id=eq.${authenticatedSession.companyId}`,
+      }, () => {
+        // Refresh attendance data on changes
+      })
+      .subscribe();
+
+    return () => {
+      client.removeChannel(channel);
+    };
+  }, [client, authenticatedSession]);
+
   // Current employee derived from current user's employeeId
   const currentEmployee =
-    employees.find((e) => e.employeeId === currentUser.employeeId) ||
+    employees.find((e) => e.employeeId === currentUser.employeeId || e.id === currentUser.employeeId) ||
     employees[0];
 
   const addToast = (
@@ -202,20 +504,72 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const switchRole = (role: AppRole) => {
-    const user = DEMO_USERS.find((u) => u.role === role);
-    if (user) {
-      setCurrentUser(user);
+    if (authenticatedSession) {
+      // In authenticated mode, just switch the displayed role
+      const roleTitles: Record<AppRole, string> = {
+        employee: 'Employee', hr_manager: 'HR Manager', payroll_user: 'Payroll User',
+        payroll_manager: 'Payroll Manager', admin: 'Admin',
+      };
+      if (authenticatedSession.roles.includes(role)) {
+        setCurrentUserState(prev => ({ ...prev, role, roleTitle: roleTitles[role] }));
+        setActiveTab('overview');
+        addToast('info', 'View Switched', `Switched to ${roleTitles[role]} view`);
+      }
+    } else {
+      const user = DEMO_USERS.find((u) => u.role === role);
+      if (user) setCurrentUser(user);
     }
   };
 
-  const handleCheckInOut = (method: 'face' | 'biometric' | 'manual', location?:AttendanceLocationCapture) => {
+  // --- Attendance with Supabase ---
+  const handleCheckInOut = async (method: 'face' | 'biometric' | 'manual', location?: AttendanceLocationCapture) => {
+    if (isAuthenticated && client && authenticatedSession) {
+      try {
+        const result = await peoplePayQueries.recordAttendanceWithLocation(client, {
+          companyId: authenticatedSession.companyId,
+          eventType: currentEmployee.currentAttendanceStatus === 'checked_in' ? 'check_out' : 'check_in',
+          method: method === 'biometric' ? 'fingerprint' : method,
+          latitude: location?.latitude,
+          longitude: location?.longitude,
+          accuracyMeters: location?.accuracyMeters,
+          permissionDenied: location?.status === 'permission_denied',
+        });
+
+        const isCheckingOut = currentEmployee.currentAttendanceStatus === 'checked_in';
+        const timeStr = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+
+        setEmployees((prev) =>
+          prev.map((e) =>
+            e.id === currentEmployee.id
+              ? {
+                  ...e,
+                  currentAttendanceStatus: isCheckingOut ? 'checked_out' : 'checked_in',
+                  todayCheckInTime: isCheckingOut ? e.todayCheckInTime : timeStr,
+                  todayCheckOutTime: isCheckingOut ? timeStr : null,
+                }
+              : e
+          )
+        );
+
+        addToast(
+          'success',
+          isCheckingOut ? 'Checked Out Successfully' : 'Checked In Successfully',
+          isCheckingOut ? `Check-out logged at ${timeStr}.` : `Good day! Check-in recorded at ${timeStr}.`
+        );
+      } catch (err: any) {
+        addToast('error', 'Attendance Error', err?.message || 'Failed to record attendance');
+      }
+      setIsCheckInModalOpen(false);
+      return;
+    }
+
+    // Fallback: mock behavior for demo mode
     const isCurrentlyIn = currentEmployee.currentAttendanceStatus === 'checked_in';
     const now = new Date();
     const timeStr = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
-    const todayStr = '2026-09-04';
+    const todayStr = new Date().toISOString().split('T')[0];
 
     if (isCurrentlyIn) {
-      // Check out
       setEmployees((prev) =>
         prev.map((e) =>
           e.id === currentEmployee.id
@@ -237,14 +591,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           verificationMethod: method,
           exceptionStatus: 'normal',
           notes: `Check-out recorded via ${method.toUpperCase()} verification`,
-          locationVerification:location?.status,
-          latitude:location?.latitude,longitude:location?.longitude,accuracyMeters:location?.accuracyMeters,distanceFromOfficeMeters:location?.distanceFromOfficeMeters,
+          locationVerification: location?.status,
+          latitude: location?.latitude, longitude: location?.longitude, accuracyMeters: location?.accuracyMeters, distanceFromOfficeMeters: location?.distanceFromOfficeMeters,
         },
         ...prev.filter((a) => !(a.employeeId === currentEmployee.id && a.date === todayStr)),
       ]);
       addToast('success', 'Checked Out Successfully', `Check-out logged at ${timeStr}. Have a great evening!`);
     } else {
-      // Check in
       setEmployees((prev) =>
         prev.map((e) =>
           e.id === currentEmployee.id
@@ -266,8 +619,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           verificationMethod: method,
           exceptionStatus: 'normal',
           notes: `Check-in recorded via ${method.toUpperCase()} verification`,
-          locationVerification:location?.status,
-          latitude:location?.latitude,longitude:location?.longitude,accuracyMeters:location?.accuracyMeters,distanceFromOfficeMeters:location?.distanceFromOfficeMeters,
+          locationVerification: location?.status,
+          latitude: location?.latitude, longitude: location?.longitude, accuracyMeters: location?.accuracyMeters, distanceFromOfficeMeters: location?.distanceFromOfficeMeters,
         },
         ...prev.filter((a) => !(a.employeeId === currentEmployee.id && a.date === todayStr)),
       ]);
@@ -276,7 +629,63 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setIsCheckInModalOpen(false);
   };
 
-  const submitLeaveRequest = (request: Partial<LeaveRequest>) => {
+  // --- Leave with Supabase ---
+  const submitLeaveRequest = async (request: Partial<LeaveRequest>) => {
+    if (isAuthenticated && client && authenticatedSession) {
+      try {
+        const { data, error } = await client.from('leave_requests').insert({
+          company_id: authenticatedSession.companyId,
+          employee_id: currentEmployee.id,
+          leave_type_id: request.leaveTypeId || '',
+          start_date: request.startDate || '',
+          end_date: request.endDate || '',
+          requested_days: request.chargeableWorkingDays || 1,
+          reason: request.reason || '',
+          status: 'submitted',
+          estimated_unpaid_deduction: request.estimatedDeduction || 0,
+          normal_working_days: request.chargeableWorkingDays || 1,
+          total_chargeable_days: request.chargeableWorkingDays || 1,
+        }).select().single();
+
+        if (error) throw error;
+
+        const newReq: LeaveRequest = {
+          id: data.id,
+          employeeId: currentEmployee.id,
+          employeeName: currentEmployee.name,
+          leaveTypeId: request.leaveTypeId || '',
+          leaveTypeName: request.leaveTypeName || '',
+          isPaid: request.isPaid ?? true,
+          startDate: request.startDate || '',
+          endDate: request.endDate || '',
+          isHalfDay: request.isHalfDay ?? false,
+          halfDayPeriod: request.halfDayPeriod,
+          reason: request.reason || '',
+          attachmentName: request.attachmentName,
+          calendarDays: request.calendarDays || 1,
+          excludedWeekends: request.excludedWeekends || 0,
+          excludedHolidays: request.excludedHolidays || 0,
+          chargeableWorkingDays: request.chargeableWorkingDays || 1,
+          paidDaysUsed: request.paidDaysUsed || 0,
+          unpaidDays: request.unpaidDays || 0,
+          estimatedDeduction: request.estimatedDeduction || 0,
+          estimatedNetSalaryAfter: request.estimatedNetSalaryAfter || 0,
+          approverId: '',
+          approverName: '',
+          status: 'submitted',
+          appliedDate: new Date().toISOString().split('T')[0],
+        };
+        setLeaveRequests((prev) => [newReq, ...prev]);
+        setIsLeaveModalOpen(false);
+        addToast('success', 'Leave Request Submitted', `Your request for ${newReq.chargeableWorkingDays} day(s) has been submitted.`);
+        return;
+      } catch (err: any) {
+        addToast('error', 'Leave Request Failed', err?.message || 'Unable to submit leave request');
+        return;
+      }
+    }
+
+    // Demo fallback
     const newReq: LeaveRequest = {
       id: 'lr-' + Date.now(),
       employeeId: currentEmployee.id,
@@ -301,33 +710,46 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       approverId: currentEmployee.reportingManagerId || 'emp-2',
       approverName: currentEmployee.reportingManagerName || 'Priya Sundaram',
       status: 'submitted',
-      appliedDate: '2026-09-04',
+      appliedDate: new Date().toISOString().split('T')[0],
     };
     setLeaveRequests((prev) => [newReq, ...prev]);
     setIsLeaveModalOpen(false);
-    addToast(
-      'success',
-      'Leave Request Submitted',
-      `Your request for ${newReq.chargeableWorkingDays} day(s) was sent to ${newReq.approverName}.`
-    );
+    addToast('success', 'Leave Request Submitted', `Your request for ${newReq.chargeableWorkingDays} day(s) was sent to ${newReq.approverName}.`);
   };
 
-  const approveLeaveRequest = (id: string) => {
-    setLeaveRequests((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, status: 'approved' } : r))
-    );
+  // --- Leave approval with Supabase ---
+  const approveLeaveRequest = async (id: string) => {
+    if (isAuthenticated && client) {
+      try {
+        await peoplePayQueries.reviewLeave(client, id, 'approved');
+        setLeaveRequests((prev) => prev.map((r) => (r.id === id ? { ...r, status: 'approved' } : r)));
+        addToast('success', 'Leave Approved', 'The leave request has been approved.');
+        return;
+      } catch (err: any) {
+        addToast('error', 'Approval Failed', err?.message || 'Unable to approve leave');
+        return;
+      }
+    }
+    setLeaveRequests((prev) => prev.map((r) => (r.id === id ? { ...r, status: 'approved' } : r)));
     addToast('success', 'Leave Approved', 'The leave request has been approved and added to attendance.');
   };
 
-  const refuseLeaveRequest = (id: string, reason?: string) => {
+  const refuseLeaveRequest = async (id: string, reason?: string) => {
+    if (isAuthenticated && client) {
+      try {
+        await peoplePayQueries.reviewLeave(client, id, 'rejected', reason);
+        setLeaveRequests((prev) =>
+          prev.map((r) => (r.id === id ? { ...r, status: 'rejected', rejectionReason: reason, rejectedBy: currentUser.name, rejectedAt: new Date().toISOString().split('T')[0] } : r))
+        );
+        addToast('warning', 'Leave Refused', 'The leave request has been declined.');
+        return;
+      } catch (err: any) {
+        addToast('error', 'Rejection Failed', err?.message || 'Unable to reject leave');
+        return;
+      }
+    }
     setLeaveRequests((prev) =>
-      prev.map((r) => (r.id === id ? {
-        ...r,
-        status: 'rejected',
-        rejectionReason: reason,
-        rejectedBy: currentUser.name,
-        rejectedAt: '2026-09-05',
-      } : r))
+      prev.map((r) => (r.id === id ? { ...r, status: 'rejected', rejectionReason: reason, rejectedBy: currentUser.name, rejectedAt: new Date().toISOString().split('T')[0] } : r))
     );
     addToast('warning', 'Leave Refused', 'The leave request has been declined.');
   };
@@ -335,10 +757,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const approveProfileRequest = (id: string) => {
     const req = profileRequests.find((p) => p.id === id);
     if (!req) return;
-    setProfileRequests((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, status: 'approved' } : p))
-    );
-    // Apply change to employee
+    setProfileRequests((prev) => prev.map((p) => (p.id === id ? { ...p, status: 'approved' } : p)));
     setEmployees((prev) =>
       prev.map((e) => {
         if (e.id === req.employeeId) {
@@ -354,9 +773,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const refuseProfileRequest = (id: string) => {
-    setProfileRequests((prev) =>
-      prev.map((p) => (p.id === id ? { ...p, status: 'refused' } : p))
-    );
+    setProfileRequests((prev) => prev.map((p) => (p.id === id ? { ...p, status: 'refused' } : p)));
     addToast('info', 'Profile Update Declined', 'The employee update request was refused.');
   };
 
@@ -375,7 +792,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       originalValue,
       requestedValue,
       status: 'pending',
-      submittedDate: '2026-09-04',
+      submittedDate: new Date().toISOString().split('T')[0],
     };
     setProfileRequests((prev) => [newReq, ...prev]);
     addToast('info', 'Update Request Queued', 'Your change request has been submitted for HR verification.');
@@ -384,21 +801,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const approveCorrectionRequest = (id: string) => {
     const req = correctionRequests.find((c) => c.id === id);
     if (!req) return;
-    setCorrectionRequests((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, status: 'approved' } : c))
-    );
-    // update attendance record
+    setCorrectionRequests((prev) => prev.map((c) => (c.id === id ? { ...c, status: 'approved' } : c)));
     setAttendanceRecords((prev) =>
       prev.map((a) => {
         if (a.employeeId === req.employeeId && a.date === req.date) {
-          return {
-            ...a,
-            checkIn: req.requestedCheckIn,
-            checkOut: req.requestedCheckOut,
-            status: 'present',
-            exceptionStatus: 'normal',
-            notes: `Regularized: ${req.reason}`,
-          };
+          return { ...a, checkIn: req.requestedCheckIn, checkOut: req.requestedCheckOut, status: 'present', exceptionStatus: 'normal', notes: `Regularized: ${req.reason}` };
         }
         return a;
       })
@@ -407,9 +814,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const refuseCorrectionRequest = (id: string) => {
-    setCorrectionRequests((prev) =>
-      prev.map((c) => (c.id === id ? { ...c, status: 'refused' } : c))
-    );
+    setCorrectionRequests((prev) => prev.map((c) => (c.id === id ? { ...c, status: 'refused' } : c)));
     addToast('warning', 'Correction Refused', 'The attendance correction request was rejected.');
   };
 
@@ -425,7 +830,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       requestedCheckOut: outTime,
       reason,
       status: 'pending',
-      submittedDate: '2026-09-04',
+      submittedDate: new Date().toISOString().split('T')[0],
     };
     setCorrectionRequests((prev) => [newReq, ...prev]);
     setIsCorrectionModalOpen(false);
@@ -433,13 +838,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updatePayrunStatus = (payrunId: string, newStatus: PayrunStatus) => {
-    if(newStatus==='validated'||newStatus==='paid'){
-      try{payslips.filter(p=>p.payrunId===payrunId).forEach(p=>assertPayrollCanFinalize(p.lines.map(line=>({name:line.name,amount:line.amount,category:['basic','allowance','overtime','adjustment'].includes(line.category)?'earning':'deduction'}))))}catch(error){addToast('error','Payroll finalization blocked',error instanceof Error?error.message:'Deductions exceed earnings');return}
+    if (newStatus === 'validated' || newStatus === 'paid') {
+      try {
+        payslips.filter(p => p.payrunId === payrunId).forEach(p =>
+          assertPayrollCanFinalize(p.lines.map(line => ({
+            name: line.name,
+            amount: line.amount,
+            category: ['basic', 'allowance', 'overtime', 'adjustment'].includes(line.category) ? 'earning' : 'deduction',
+          })))
+        );
+      } catch (error) {
+        addToast('error', 'Payroll finalization blocked', error instanceof Error ? error.message : 'Deductions exceed earnings');
+        return;
+      }
     }
     setPayruns((prev) =>
       prev.map((p) => {
         if (p.id === payrunId) {
-          const now = '2026-09-04 11:30 AM';
+          const now = new Date().toLocaleString('en-IN');
           return {
             ...p,
             status: newStatus,
@@ -452,10 +868,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         return p;
       })
     );
-    // Also update associated payslips
-    setPayslips((prev) =>
-      prev.map((ps) => (ps.payrunId === payrunId ? { ...ps, status: newStatus } : ps))
-    );
+    setPayslips((prev) => prev.map((ps) => (ps.payrunId === payrunId ? { ...ps, status: newStatus } : ps)));
     addToast('success', 'Payrun Updated', `Payrun transitioned to ${newStatus.toUpperCase()} status.`);
   };
 
@@ -477,7 +890,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       netTotal: payrun.netTotal || 696800,
       warningCount: payrun.warningCount || 0,
       readinessScore: 85,
-      createdAt: '2026-09-04',
+      createdAt: new Date().toISOString().split('T')[0],
     };
     setPayruns((prev) => [newPr, ...prev]);
     setSelectedPayrun(newPr);
@@ -513,14 +926,19 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const markNotificationRead = (id: string) => {
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
-    );
+    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
   };
 
   const clearAllNotifications = () => {
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
     addToast('info', 'Notifications Cleared', 'All notices marked as read.');
+  };
+
+  const handleSignOut = async () => {
+    if (client) {
+      await client.auth.signOut();
+    }
+    window.location.assign('/');
   };
 
   return (
@@ -589,6 +1007,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         updateSalaryStructure,
         markNotificationRead,
         clearAllNotifications,
+        authenticated: isAuthenticated,
+        companyId: authenticatedSession?.companyId || null,
+        signOut: handleSignOut,
+        dataLoading,
       }}
     >
       {children}

@@ -2,13 +2,34 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
-import { Eye, EyeOff, LockKeyhole, Mail } from 'lucide-react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Eye, EyeOff, LockKeyhole, Mail, AlertCircle, Loader2 } from 'lucide-react';
 import { PeoplePayLogo } from '@/components/brand/PeoplePayLogo';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import type { AppRole } from '@/lib/types';
+
+function getHighestRole(roles: AppRole[]): AppRole {
+  const priority: AppRole[] = ['admin', 'payroll_manager', 'payroll_user', 'hr_manager', 'employee'];
+  for (const role of priority) {
+    if (roles.includes(role)) return role;
+  }
+  return 'employee';
+}
+
+function getRoleDashboardPath(role: AppRole): string {
+  switch (role) {
+    case 'admin': return '/dashboard?view=admin_overview';
+    case 'payroll_manager': return '/dashboard?view=payroll_dashboard';
+    case 'payroll_user': return '/dashboard?view=payroll_dashboard';
+    case 'hr_manager': return '/dashboard?view=employees';
+    case 'employee':
+    default: return '/dashboard?view=overview';
+  }
+}
 
 export function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [email, setEmail] = React.useState('');
   const [password, setPassword] = React.useState('');
   const [showPassword, setShowPassword] = React.useState(false);
@@ -24,13 +45,84 @@ export function LoginPage() {
       return;
     }
     setSubmitting(true);
-    const result = await client.auth.signInWithPassword({ email: email.trim(), password });
-    if (result.error) {
-      setError(result.error.message);
+
+    try {
+      // 1. Sign in
+      const result = await client.auth.signInWithPassword({ email: email.trim(), password });
+      if (result.error) {
+        if (result.error.message.includes('Invalid login')) {
+          setError('Invalid email or password. Please check your credentials.');
+        } else {
+          setError(result.error.message);
+        }
+        setSubmitting(false);
+        return;
+      }
+
+      const user = result.data.user;
+      if (!user) {
+        setError('Authentication failed. Please try again.');
+        setSubmitting(false);
+        return;
+      }
+
+      // 2. Read employee record
+      const { data: employee, error: empError } = await client
+        .from('employees')
+        .select('id, company_id, status, onboarding_status')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (empError) {
+        setError('Unable to load your employee record. Please contact your administrator.');
+        setSubmitting(false);
+        return;
+      }
+
+      if (!employee) {
+        setError('No employee record found for this account. Please contact HR.');
+        setSubmitting(false);
+        return;
+      }
+
+      // 3. Check employee status
+      if (employee.status === 'terminated' || employee.status === 'inactive') {
+        await client.auth.signOut();
+        setError('Your account has been suspended. Please contact your administrator.');
+        setSubmitting(false);
+        return;
+      }
+
+      // 4. Check onboarding
+      if (employee.onboarding_status !== 'verified' && employee.onboarding_status !== 'pending_verification') {
+        router.replace('/onboarding');
+        return;
+      }
+
+      // 5. Read roles
+      const { data: roles } = await client
+        .from('user_company_roles')
+        .select('role')
+        .eq('company_id', employee.company_id)
+        .eq('user_id', user.id);
+
+      const userRoles = (roles || []).map(r => r.role as AppRole);
+      if (userRoles.length === 0) {
+        userRoles.push('employee');
+      }
+
+      // 6. Redirect to highest-role dashboard
+      const redirect = searchParams.get('redirect');
+      if (redirect && redirect.startsWith('/')) {
+        router.replace(redirect);
+      } else {
+        const highestRole = getHighestRole(userRoles);
+        router.replace(getRoleDashboardPath(highestRole));
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Network error. Please check your connection.');
       setSubmitting(false);
-      return;
     }
-    router.replace('/dashboard');
   };
 
   const inputClass = 'w-full rounded-[10px] border border-[#D9D5D8] bg-white py-3 pl-10 pr-3 text-sm text-[#28262D] outline-none transition focus:border-[#714B67] focus:ring-2 focus:ring-[#714B67]/15';
@@ -69,10 +161,21 @@ export function LoginPage() {
             </span>
           </label>
 
-          {error && <p role="alert" className="rounded-[10px] border border-[#F1C3C0] bg-[#FDF1F0] px-3 py-2.5 text-sm text-[#9D3E39]">{error}</p>}
+          <div className="flex justify-end">
+            <Link href="/forgot-password" className="text-xs font-medium text-[#714B67] hover:underline">
+              Forgot password?
+            </Link>
+          </div>
 
-          <button type="submit" disabled={submitting} className="w-full rounded-[10px] bg-[#714B67] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#5C3C53] disabled:cursor-not-allowed disabled:opacity-60">
-            {submitting ? 'Signing in…' : 'Sign in'}
+          {error && (
+            <div role="alert" className="flex items-start gap-2 rounded-[10px] border border-[#F1C3C0] bg-[#FDF1F0] px-3 py-2.5 text-sm text-[#9D3E39]">
+              <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          <button type="submit" disabled={submitting} className="flex w-full items-center justify-center gap-2 rounded-[10px] bg-[#714B67] px-4 py-3 text-sm font-bold text-white transition hover:bg-[#5C3C53] disabled:cursor-not-allowed disabled:opacity-60">
+            {submitting ? <><Loader2 className="h-4 w-4 animate-spin" />Signing in…</> : 'Sign in'}
           </button>
         </form>
 

@@ -47,7 +47,7 @@ export function CreateWorkScheduleModal({
   );
   const [saving, setSaving] = React.useState(false);
   const [error, setError] = React.useState('');
-  const canCreate = ['hr_manager', 'hr_payroll_user', 'hr_payroll_manager', 'admin'].includes(currentRole);
+  const canCreate = ['hr_manager', 'payroll_user', 'payroll_manager', 'admin'].includes(currentRole);
 
   React.useEffect(() => {
     if (!open) return;

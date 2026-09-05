@@ -30,6 +30,6 @@ describe('contract lifecycle',()=>{
 
 describe('roles, intern compensation and rejected history',()=>{
   it('keeps intern as an employee category with stipend wording',()=>expect(compensationLabel('intern')).toBe('Monthly Stipend'));
-  it('allows only payroll manager/admin to edit overtime',()=>{expect(canManageOvertime('hr_payroll_user')).toBe(false);expect(canManageOvertime('hr_payroll_manager')).toBe(true);expect(canManageOvertime('admin')).toBe(true)});
+  it('allows only payroll manager/admin to edit overtime',()=>{expect(canManageOvertime('payroll_user')).toBe(false);expect(canManageOvertime('payroll_manager')).toBe(true);expect(canManageOvertime('admin')).toBe(true)});
   it('has a deterministic rejected leave with complete history',()=>{const rejected=INITIAL_LEAVE_REQUESTS.find(r=>r.status==='rejected');expect(rejected?.rejectionReason).toBeTruthy();expect(rejected?.rejectedBy).toBeTruthy();expect(rejected?.rejectedAt).toBeTruthy()});
 });
