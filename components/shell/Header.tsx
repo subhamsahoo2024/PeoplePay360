@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useApp } from '@/lib/context/app-context';
 import {
   Bell,
@@ -17,8 +18,10 @@ import {
 import { NotificationsDrawer } from './NotificationsDrawer';
 import { RoleSwitcherModal } from './RoleSwitcherModal';
 import { cn } from '@/lib/utils';
+import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 
 export function Header({ onToggleMobileMenu }: { onToggleMobileMenu?: () => void }) {
+  const router = useRouter();
   const {
     currentUser,
     currentEmployee,
@@ -35,6 +38,14 @@ export function Header({ onToggleMobileMenu }: { onToggleMobileMenu?: () => void
 
   const unreadCount = notifications.filter((n) => !n.read).length;
   const isCheckedIn = currentEmployee.currentAttendanceStatus === 'checked_in';
+
+  const signOut = async () => {
+    setIsProfileMenuOpen(false);
+    sessionStorage.removeItem('peoplepay360-demo-session');
+    const client = getSupabaseBrowserClient();
+    if (client) await client.auth.signOut();
+    router.replace('/');
+  };
 
   return (
     <>
@@ -179,6 +190,15 @@ export function Header({ onToggleMobileMenu }: { onToggleMobileMenu?: () => void
                   >
                     <LogOut className="w-3.5 h-3.5 text-[#C85A54]" />
                     <span>Sign Out</span>
+                  </button>
+                </div>
+                <div className="pt-1">
+                  <button
+                    onClick={signOut}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold text-[#C85A54] hover:bg-[#FDF1F0] rounded-[10px] transition-colors"
+                  >
+                    <LogOut className="w-3.5 h-3.5" />
+                    <span>Sign out</span>
                   </button>
                 </div>
               </div>
