@@ -45,9 +45,9 @@ export function RoleSwitcherModal({ isOpen, onClose }: RoleSwitcherModalProps) {
       access: 'Payroll Processing (Read-Only Rules)',
     },
     hr_payroll_manager: {
-      desc: 'Full Payroll CRUD: manage structures & rules, compute & validate payruns, Readiness Score, Explain Difference & Impact Simulator.',
+      desc: 'Full Payroll CRUD: manage structures and rules, compute and validate payruns, review readiness, and export reports.',
       icon: <Shield className="w-5 h-5 text-[#714B67]" />,
-      access: 'Full Payroll Authority & Simulator',
+      access: 'Full Payroll Authority',
     },
     admin: {
       desc: 'Global System Admin: Role-permission matrix, biometric IoT devices, audit logs, organizational configurations.',

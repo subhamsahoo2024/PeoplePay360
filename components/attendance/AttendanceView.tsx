@@ -13,12 +13,14 @@ import {
   Search,
   Calendar,
   Sparkles,
+  Download,
 } from 'lucide-react';
 import { KPICard } from '@/components/shared/KPICard';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { AttendanceVerificationModal } from './AttendanceVerificationModal';
 import { CorrectionRequestModal } from './CorrectionRequestModal';
 import { cn, formatDate } from '@/lib/utils';
+import { downloadCsv } from '@/lib/exports/file-downloads';
 
 export function AttendanceView() {
   const {
@@ -65,6 +67,12 @@ export function AttendanceView() {
         </div>
 
         <div className="flex items-center gap-2.5 flex-wrap">
+          <button
+            onClick={() => downloadCsv('attendance-records.csv', ['Date', 'Status', 'Check in', 'Check out', 'Worked hours', 'Overtime hours', 'Notes'], filteredRecords.map((record) => [record.date, record.status, record.checkIn, record.checkOut, record.workedHours, record.overtimeHours, record.notes]))}
+            className="px-3.5 py-2 text-xs font-semibold text-[#714B67] bg-white rounded-[10px] border border-[#D8C7D4] flex items-center gap-1.5"
+          >
+            <Download className="w-3.5 h-3.5" /> Export CSV
+          </button>
           <button
             onClick={() => setIsCorrectionModalOpen(true)}
             className="px-3.5 py-2 text-xs font-semibold text-[#714B67] bg-[#F3EEF2] hover:bg-[#EBDDE9] rounded-[10px] border border-[#D8C7D4] transition-colors flex items-center gap-1.5"

@@ -4,7 +4,6 @@ import React from 'react';
 import { useApp } from '@/lib/context/app-context';
 import {
   CreditCard,
-  TrendingUp,
   ShieldCheck,
   Play,
   Plus,
@@ -68,13 +67,6 @@ export function PayrollDashboardView() {
               <span>Initiate Payrun</span>
             </button>
 
-            <button
-              onClick={() => setActiveTab('payroll_simulator')}
-              className="px-4 py-2.5 rounded-[12px] bg-white/15 hover:bg-white/25 text-white text-xs font-semibold backdrop-blur-xs transition-colors border border-white/20 flex items-center gap-2"
-            >
-              <TrendingUp className="w-4 h-4" />
-              <span>Launch Simulator</span>
-            </button>
           </div>
         </div>
       </div>

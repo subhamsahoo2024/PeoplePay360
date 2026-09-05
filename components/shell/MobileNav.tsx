@@ -12,7 +12,6 @@ import {
   Sparkles,
   CreditCard,
   FileCheck,
-  Mail,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
@@ -46,7 +45,6 @@ export function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
     ...(currentRole === 'hr_payroll_user' || currentRole === 'hr_payroll_manager' || currentRole === 'admin'
       ? [
           { id: 'payruns', label: 'Payruns', icon: FileText },
-          { id: 'bulk_email_dispatch', label: 'Bulk Email Dispatch', icon: Mail },
           { id: 'company_loans', label: 'Loan Deductions', icon: CreditCard },
           { id: 'reports', label: 'Reports', icon: LayoutDashboard },
         ]
@@ -154,4 +152,3 @@ export function MobileBottomNav() {
 }
 
 export const MobileNav = MobileBottomNav;
-

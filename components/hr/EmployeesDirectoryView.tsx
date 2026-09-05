@@ -16,12 +16,14 @@ import {
   CheckCircle2,
   AlertTriangle,
   UserPlus,
+  Download,
 } from 'lucide-react';
 import { Employee } from '@/lib/types';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { formatINR, formatDate, cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { CreateEmployeeAccountModal } from './CreateEmployeeAccountModal';
+import { downloadCsv } from '@/lib/exports/file-downloads';
 
 export function EmployeesDirectoryView() {
   const { employees, currentRole } = useApp();
@@ -63,6 +65,7 @@ export function EmployeesDirectoryView() {
         </div>
 
         <div className="flex items-center gap-2 text-xs">
+          <button onClick={() => downloadCsv('employees.csv', ['Employee ID', 'Name', 'Department', 'Job title', 'Email', 'Phone'], filtered.map((employee) => [employee.employeeId, employee.name, employee.department || employee.departmentName, employee.jobPosition, employee.email, employee.phone]))} className="px-3 py-2 bg-white text-[#714B67] rounded-[10px] font-bold flex items-center gap-1.5 border border-[#D8C7D4]"><Download className="w-4 h-4"/>Export CSV</button>
           {(currentRole==='hr_manager'||currentRole==='admin')&&<button onClick={()=>setIsCreateOpen(true)} className="px-3 py-2 bg-[#714B67] text-white rounded-[10px] font-bold flex items-center gap-1.5"><UserPlus className="w-4 h-4"/>Create Employee Account</button>}
           <span className="font-semibold text-[#714B67] bg-[#F4F3F5] px-3 py-1.5 rounded-[10px] border border-[#E4E1E5]">
             {filtered.length} Employees Found

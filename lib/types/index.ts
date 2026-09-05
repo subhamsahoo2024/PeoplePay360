@@ -109,6 +109,10 @@ export interface WorkingScheduleDay {
   endTime: string;
   breakDurationMins: number;
   isWorking: boolean;
+  lunchStart?: string;
+  lunchEnd?: string;
+  graceMinutes?: number;
+  overtimeEligible?: boolean;
 }
 
 export interface WorkingSchedule {
@@ -121,6 +125,9 @@ export interface WorkingSchedule {
   hoursPerDay?: number;
   daysPerWeek?: number;
   lunchBreakMinutes?: number;
+  effectiveFrom?: string;
+  effectiveTo?: string;
+  assignmentLabel?: string;
 }
 
 export interface AttendanceRecord {
@@ -141,6 +148,7 @@ export interface AttendanceRecord {
   longitude?: number;
   accuracyMeters?: number;
   distanceFromOfficeMeters?: number | null;
+  overtimePaymentStatus?: 'paid' | 'recorded_unpaid' | 'not_applicable';
 }
 
 export interface AttendanceLocationCapture {
@@ -200,6 +208,10 @@ export interface LeaveRequest {
   rejectionReason?: string;
   rejectedBy?: string;
   rejectedAt?: string;
+  normalWorkingDays?: number;
+  sandwichDays?: number;
+  sandwichPolicyVersion?: number;
+  sandwichExplanation?: string;
 }
 
 export interface SalaryStructure {
