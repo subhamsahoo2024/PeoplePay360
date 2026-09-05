@@ -17,7 +17,6 @@ import {
 } from 'lucide-react';
 import { AppRole, User } from '@/lib/types';
 import { cn } from '@/lib/utils';
-import { PeoplePayLogo } from '@/components/brand/PeoplePayLogo';
 
 interface RoleSwitcherModalProps {
   isOpen: boolean;
@@ -75,11 +74,12 @@ export function RoleSwitcherModal({ isOpen, onClose }: RoleSwitcherModalProps) {
           {/* Header */}
           <div className="flex items-start justify-between pb-4 border-b border-[#F4F3F5]">
             <div className="flex items-center gap-3">
-              <PeoplePayLogo size={40} />
+              <div className="w-10 h-10 rounded-[12px] bg-[#714B67] text-white flex items-center justify-center font-bold text-lg shadow-xs">
+                P
+              </div>
               <div>
                 <h2 className="text-lg font-bold text-[#28262D] flex items-center gap-2">
-                  <span className="font-script text-2xl font-bold text-[#28262D]">PeoplePay360</span>
-                  <span className="text-sm font-bold text-[#714B67]">Persona Switcher</span>
+                  PeoplePay360 Persona Switcher
                   <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-[#FFF6D2] text-[#9A6B0A] border border-[#F8E29E]">
                     Live Demo
                   </span>

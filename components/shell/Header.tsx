@@ -66,13 +66,6 @@ export function Header({ onToggleMobileMenu }: { onToggleMobileMenu?: () => void
           </div>
         </div>
 
-        {/* Center Welcome Banner in Header */}
-        <div className="hidden xl:flex items-center gap-2 px-3 py-1 rounded-full bg-[#FBFAFB] border border-[#E4E1E5]/80">
-          <span className="font-script text-2xl text-[#714B67] font-bold tracking-wide">
-            Welcome, {currentUser.name.split(' ')[0]}
-          </span>
-        </div>
-
         {/* Right Actions: Attendance, Quick Check In/Out, Notifications, Role Switcher, Profile */}
         <div className="flex items-center gap-2.5">
           {/* Attendance Status Badge */}
@@ -163,10 +156,7 @@ export function Header({ onToggleMobileMenu }: { onToggleMobileMenu?: () => void
                 className="absolute right-0 mt-2 w-64 bg-white rounded-[16px] border border-[#E4E1E5] shadow-xl p-2 z-50 divide-y divide-[#F4F3F5]"
               >
                 <div className="p-3">
-                  <span className="font-script text-2xl font-bold text-[#714B67] block leading-tight">
-                    My account
-                  </span>
-                  <p className="text-xs font-bold text-[#28262D] mt-1">{currentUser.name}</p>
+                  <p className="text-xs font-bold text-[#28262D]">{currentUser.name}</p>
                   <p className="text-[11px] text-[#74717A] truncate">{currentUser.email}</p>
                   <div className="mt-2 flex items-center justify-between text-[10px]">
                     <span className="px-2 py-0.5 rounded-full bg-[#F4F3F5] text-[#714B67] font-semibold">
