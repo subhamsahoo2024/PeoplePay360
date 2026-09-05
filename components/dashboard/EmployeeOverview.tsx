@@ -20,6 +20,7 @@ import { KPICard } from '@/components/shared/KPICard';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { formatINR, formatDate, cn } from '@/lib/utils';
 import { LEAVE_TYPES } from '@/lib/mock-data/leaves';
+import { SemanticIconTile } from '@/components/brand/SemanticIconTile';
 
 export function EmployeeOverview() {
   const {
@@ -94,8 +95,9 @@ export function EmployeeOverview() {
               ? `Check-in recorded at ${currentEmployee.todayCheckInTime || '09:28 AM'}`
               : 'Punch in using Face AI or Biometric turnstile'
           }
-          icon={isCheckedIn ? <UserCheck className="w-5 h-5 text-[#438A6B]" /> : <UserX className="w-5 h-5 text-[#74717A]" />}
+          icon={isCheckedIn ? <UserCheck className="w-5 h-5 text-white" /> : <UserX className="w-5 h-5 text-[#28262D]" />}
           highlight={isCheckedIn}
+          iconVariant={isCheckedIn ? 'verified' : 'checkout'}
           actionText="Attendance Logs"
           onClick={() => setActiveTab('attendance')}
         />
@@ -104,7 +106,8 @@ export function EmployeeOverview() {
           title="Casual Leave Balance"
           value="5 / 12 Days"
           subtitle="Remaining for current calendar year"
-          icon={<Palmtree className="w-5 h-5" />}
+          icon={<Palmtree className="w-5 h-5 text-[#B45309]" />}
+          iconVariant="leave"
           actionText="View Leaves"
           onClick={() => setActiveTab('leave')}
         />
@@ -113,7 +116,8 @@ export function EmployeeOverview() {
           title="August 2026 Net Salary"
           value={latestPayslip ? formatINR(latestPayslip.netSalary) : '₹40,750'}
           subtitle="Processed on 31 Aug 2026"
-          icon={<CreditCard className="w-5 h-5" />}
+          icon={<CreditCard className="w-5 h-5 text-[#714B67]" />}
+          iconVariant="salary"
           actionText="Salary Breakdown"
           onClick={() => {
             if (latestPayslip) setSelectedPayslip(latestPayslip);
@@ -125,7 +129,8 @@ export function EmployeeOverview() {
           title="Pending Requests"
           value={pendingLeaves.length > 0 ? `${pendingLeaves.length} In Review` : '0 Pending'}
           subtitle="Manager approval workflow active"
-          icon={<FileCheck className="w-5 h-5" />}
+          icon={<FileCheck className="w-5 h-5 text-[#9A6B0A]" />}
+          iconVariant="warning"
           actionText="Track Status"
           onClick={() => setActiveTab('leave')}
         />
@@ -140,14 +145,16 @@ export function EmployeeOverview() {
           <div className="space-y-2">
             <button
               onClick={() => setIsCheckInModalOpen(true)}
-              className="w-full p-3 rounded-[12px] border border-[#E4E1E5] hover:border-[#714B67] hover:bg-[#FBFAFB] transition-all flex items-center justify-between text-left group"
+              className="w-full p-3 rounded-[12px] border border-[#E4E1E5] hover:border-[#F4C430] hover:bg-[#FBFAFB] transition-all flex items-center justify-between text-left group"
             >
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-[10px] bg-[#F4F3F5] group-hover:bg-[#714B67] group-hover:text-white text-[#714B67] flex items-center justify-center transition-colors">
-                  <UserCheck className="w-4 h-4" />
-                </div>
+                <SemanticIconTile
+                  icon={<UserCheck className="w-4 h-4" />}
+                  variant={isCheckedIn ? 'verified' : 'checkin'}
+                  size="table"
+                />
                 <div>
-                  <p className="text-xs font-bold text-[#28262D]">Biometric & Face Punch</p>
+                  <p className="text-xs font-bold text-[#28262D] group-hover:text-[#714B67] transition-colors">Biometric & Face Punch</p>
                   <p className="text-[11px] text-[#74717A]">Log turnstile check-in or out</p>
                 </div>
               </div>
@@ -156,34 +163,56 @@ export function EmployeeOverview() {
 
             <button
               onClick={() => setIsLeaveModalOpen(true)}
-              className="w-full p-3 rounded-[12px] border border-[#E4E1E5] hover:border-[#714B67] hover:bg-[#FBFAFB] transition-all flex items-center justify-between text-left group"
+              className="w-full p-3 rounded-[12px] border border-[#E4E1E5] hover:border-[#FDE68A] hover:bg-[#FBFAFB] transition-all flex items-center justify-between text-left group"
             >
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-[10px] bg-[#F4F3F5] group-hover:bg-[#714B67] group-hover:text-white text-[#714B67] flex items-center justify-center transition-colors">
-                  <Palmtree className="w-4 h-4" />
-                </div>
+                <SemanticIconTile
+                  icon={<Palmtree className="w-4 h-4" />}
+                  variant="leave"
+                  size="table"
+                />
                 <div>
-                  <p className="text-xs font-bold text-[#28262D]">Apply for Leave</p>
+                  <p className="text-xs font-bold text-[#28262D] group-hover:text-[#B45309] transition-colors">Apply for Leave</p>
                   <p className="text-[11px] text-[#74717A]">Simulate salary impact before submitting</p>
+                </div>
+              </div>
+              <ArrowRight className="w-4 h-4 text-[#A4879F] group-hover:text-[#B45309] transition-colors" />
+            </button>
+
+            <button
+              onClick={() => setIsCorrectionModalOpen(true)}
+              className="w-full p-3 rounded-[12px] border border-[#E4E1E5] hover:border-[#E2E6EA] hover:bg-[#FBFAFB] transition-all flex items-center justify-between text-left group"
+            >
+              <div className="flex items-center gap-3">
+                <SemanticIconTile
+                  icon={<FileCheck className="w-4 h-4" />}
+                  variant="attendance"
+                  size="table"
+                />
+                <div>
+                  <p className="text-xs font-bold text-[#28262D] group-hover:text-[#714B67] transition-colors">Regularize Missed Punch</p>
+                  <p className="text-[11px] text-[#74717A]">Submit attendance correction request</p>
                 </div>
               </div>
               <ArrowRight className="w-4 h-4 text-[#A4879F] group-hover:text-[#714B67] transition-colors" />
             </button>
 
             <button
-              onClick={() => setIsCorrectionModalOpen(true)}
-              className="w-full p-3 rounded-[12px] border border-[#E4E1E5] hover:border-[#714B67] hover:bg-[#FBFAFB] transition-all flex items-center justify-between text-left group"
+              onClick={() => setActiveTab('my_loans')}
+              className="w-full p-3 rounded-[12px] border border-[#E4E1E5] hover:border-[#FCD34D] hover:bg-[#FBFAFB] transition-all flex items-center justify-between text-left group"
             >
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-[10px] bg-[#F4F3F5] group-hover:bg-[#714B67] group-hover:text-white text-[#714B67] flex items-center justify-center transition-colors">
-                  <FileCheck className="w-4 h-4" />
-                </div>
+                <SemanticIconTile
+                  icon={<CreditCard className="w-4 h-4" />}
+                  variant="loan"
+                  size="table"
+                />
                 <div>
-                  <p className="text-xs font-bold text-[#28262D]">Regularize Missed Punch</p>
-                  <p className="text-[11px] text-[#74717A]">Submit attendance correction request</p>
+                  <p className="text-xs font-bold text-[#28262D] group-hover:text-[#92400E] transition-colors">Employee Loan & Advances</p>
+                  <p className="text-[11px] text-[#74717A]">Apply for salary advance or track EMIs</p>
                 </div>
               </div>
-              <ArrowRight className="w-4 h-4 text-[#A4879F] group-hover:text-[#714B67] transition-colors" />
+              <ArrowRight className="w-4 h-4 text-[#A4879F] group-hover:text-[#92400E] transition-colors" />
             </button>
           </div>
         </div>

@@ -401,3 +401,224 @@ export interface SimulationResult {
     explanation: string;
   }>;
 }
+
+// ==========================================
+// 1. MEDICAL-LEAVE PROOF WORKFLOW TYPES
+// ==========================================
+export type MedicalProofStatus =
+  | 'not_required'
+  | 'pending_upload'
+  | 'submitted'
+  | 'under_hr_review'
+  | 'verified'
+  | 'rejected'
+  | 'resubmission_required'
+  | 'overdue';
+
+export interface LeaveProofPolicy {
+  leaveTypeId: string;
+  proofRequired: boolean;
+  minimumDurationDays: number;
+  acceptedFileTypes: string[];
+  maximumFileSizeMb: number;
+  submissionDeadlineAfterReturnDays: number;
+}
+
+export interface MedicalProof {
+  id: string;
+  leaveRequestId: string;
+  employeeId: string;
+  employeeName: string;
+  department: string;
+  leaveStartDate: string;
+  leaveEndDate: string;
+  totalDays: number;
+  expectedReturnDate: string;
+  submissionDeadline: string;
+  submissionOption: 'with_application' | 'post_return';
+  fileName?: string;
+  fileSizeMb?: number;
+  fileType?: string;
+  uploadedAt?: string;
+  status: MedicalProofStatus;
+  hrRemarks?: string;
+  verifiedAt?: string;
+  verifiedBy?: string;
+}
+
+// ==========================================
+// 2. STATUTORY CONTRIBUTION (PF) TYPES
+// ==========================================
+export interface StatutoryContributionRule {
+  id: string;
+  name: string;
+  country: 'IN';
+  contributionType: 'PF';
+  employeeRate: number; // 0.12 (12%)
+  employerRate: number; // 0.12 (12%)
+  wageBasis: string;
+  wageCeiling?: number; // 15000
+  effectiveFrom: string;
+  effectiveTo?: string;
+  version: string;
+  status: 'active' | 'scheduled' | 'expired';
+  description?: string;
+  affectedEmployeesCount?: number;
+  eligibilityWageThreshold?: number;
+}
+
+// ==========================================
+// 3. EMPLOYEE COMPANY-LOAN MODULE TYPES
+// ==========================================
+export type LoanStatus =
+  | 'draft'
+  | 'submitted'
+  | 'hr_review'
+  | 'payroll_review'
+  | 'approved'
+  | 'active'
+  | 'partially_repaid'
+  | 'settlement_requested'
+  | 'closed'
+  | 'rejected';
+
+export type InstalmentStatus =
+  | 'upcoming'
+  | 'deducted'
+  | 'partially_paid'
+  | 'skipped'
+  | 'overdue'
+  | 'settled';
+
+export interface LoanInstalment {
+  id: string;
+  instalmentNumber: number;
+  payrollMonth: string;
+  openingBalance: number;
+  principalDeducted: number;
+  interestDeducted: number;
+  totalMonthlyDeduction: number;
+  closingBalance: number;
+  status: InstalmentStatus;
+  payslipId?: string;
+  paidDate?: string;
+}
+
+export interface LumpSumPayment {
+  id: string;
+  loanId: string;
+  paymentAmount: number;
+  paymentDate: string;
+  paymentMethod: 'bank_transfer' | 'upi' | 'cheque';
+  preOutstanding: number;
+  postOutstanding: number;
+  repaymentAdjustment: 'reduce_tenure' | 'reduce_monthly_deduction';
+  newMonthlyDeduction?: number;
+  newRemainingInstalments?: number;
+  notes?: string;
+}
+
+export interface LoanSettlement {
+  id: string;
+  loanId: string;
+  outstandingPrincipal: number;
+  accruedInterest: number;
+  earlySettlementCharge: number;
+  totalSettlementAmount: number;
+  proposedPaymentDate: string;
+  requestedAt: string;
+  status: 'pending_review' | 'approved' | 'settled' | 'rejected';
+  rejectionReason?: string;
+  settlementStatementGenerated?: boolean;
+}
+
+export interface EmployeeLoan {
+  id: string;
+  loanNumber: string;
+  employeeId: string;
+  employeeName: string;
+  department: string;
+  principalAmount: number;
+  annualInterestRate: number;
+  interestMethod: 'reducing_balance' | 'flat';
+  totalPayableAmount: number;
+  amountRepaid: number;
+  outstandingPrincipal: number;
+  outstandingInterest: number;
+  outstandingTotal: number;
+  monthlyPayrollDeduction: number;
+  totalInstalments: number;
+  remainingInstalments: number;
+  nextDeductionDate: string;
+  loanStartDate: string;
+  expectedCompletionDate: string;
+  status: LoanStatus;
+  purpose: string;
+  supportingDocName?: string;
+  repaymentSchedule: LoanInstalment[];
+  settlementRequest?: LoanSettlement;
+  partialPayments?: LumpSumPayment[];
+  approvedByHRDate?: string;
+  approvedByPayrollDate?: string;
+  pausedReason?: string;
+}
+
+export interface LoanApplication {
+  requestedAmount: number;
+  purpose: string;
+  preferredMonthlyDeduction: number;
+  preferredRepaymentPeriodMonths: number;
+  requestedStartMonth: string;
+  supportingDocName?: string;
+  consentAgreed: boolean;
+}
+
+// ==========================================
+// 4. BULK PAYSLIP EMAIL DISTRIBUTION TYPES
+// ==========================================
+export type EmailRecipientStatus = 'sent' | 'failed' | 'queued' | 'pending';
+export type EmailFailureReason =
+  | 'missing_email'
+  | 'invalid_email'
+  | 'payslip_pdf_unavailable'
+  | 'service_error'
+  | 'timeout';
+
+export interface EmailRecipientResult {
+  id: string;
+  employeeId: string;
+  employeeName: string;
+  employeeCode: string;
+  department: string;
+  jobPosition: string;
+  email: string;
+  status: EmailRecipientStatus;
+  failureReason?: EmailFailureReason;
+  failureMessage?: string;
+  attemptCount: number;
+  lastAttemptTime?: string;
+  retryStatus?: 'not_retried' | 'retrying' | 'succeeded' | 'still_failed';
+  payslipId: string;
+  netSalary: number;
+}
+
+export interface EmailDistributionJob {
+  id: string;
+  payrunId: string;
+  payrunName: string;
+  period: string;
+  subject: string;
+  templateName: string;
+  totalSelected: number;
+  queuedCount: number;
+  sendingCount: number;
+  successfullySent: number;
+  failedCount: number;
+  pendingCount: number;
+  progressPercentage: number;
+  elapsedSeconds: number;
+  status: 'idle' | 'in_progress' | 'completed' | 'completed_with_errors' | 'failed';
+  recipients: EmailRecipientResult[];
+  startedAt?: string;
+  completedAt?: string;
+}

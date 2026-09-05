@@ -10,9 +10,13 @@ import {
   User,
   X,
   Sparkles,
+  CreditCard,
+  FileCheck,
+  Mail,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
+import { PeoplePayLogo, PeoplePayWordmark } from '@/components/brand/PeoplePayLogo';
 
 interface MobileDrawerProps {
   isOpen: boolean;
@@ -28,13 +32,22 @@ export function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
     { id: 'overview', label: 'Overview', icon: LayoutDashboard },
     { id: 'attendance', label: 'Attendance', icon: CalendarCheck },
     { id: 'leave', label: 'Leave', icon: Palmtree },
+    { id: 'my_loans', label: 'My Loans', icon: CreditCard },
     { id: 'payslips', label: 'My Payslips', icon: FileText },
     { id: 'profile', label: 'Profile', icon: User },
-    ...(currentRole !== 'employee'
+    ...(currentRole === 'hr_manager' || currentRole === 'admin'
       ? [
+          { id: 'medical_proofs', label: 'Medical Proofs', icon: FileCheck },
+          { id: 'company_loans', label: 'Employee Loans', icon: CreditCard },
           { id: 'employees', label: 'Employees', icon: User },
           { id: 'approvals', label: 'Approvals', icon: CalendarCheck },
+        ]
+      : []),
+    ...(currentRole === 'hr_payroll_user' || currentRole === 'hr_payroll_manager' || currentRole === 'admin'
+      ? [
           { id: 'payruns', label: 'Payruns', icon: FileText },
+          { id: 'bulk_email_dispatch', label: 'Bulk Email Dispatch', icon: Mail },
+          { id: 'company_loans', label: 'Loan Deductions', icon: CreditCard },
           { id: 'reports', label: 'Reports', icon: LayoutDashboard },
         ]
       : []),
@@ -53,12 +66,10 @@ export function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
           className="relative w-4/5 max-w-xs h-full bg-white shadow-xl flex flex-col p-4"
         >
           <div className="flex items-center justify-between pb-4 border-b border-[#F4F3F5]">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-[10px] bg-[#714B67] text-white flex items-center justify-center font-bold text-sm">
-                P
-              </div>
+            <div className="flex items-center gap-2.5">
+              <PeoplePayLogo size={32} />
               <div>
-                <span className="font-bold text-sm text-[#28262D]">PeoplePay360</span>
+                <PeoplePayWordmark size="sm" />
                 <p className="text-[10px] text-[#714B67] font-semibold">{currentUser.roleTitle}</p>
               </div>
             </div>

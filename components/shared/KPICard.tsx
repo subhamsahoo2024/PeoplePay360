@@ -1,6 +1,7 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
 import { ArrowUpRight, ArrowDownRight } from 'lucide-react';
+import { SemanticIconTile, SemanticIconVariant } from './SemanticIconTile';
 
 interface KPICardProps {
   id?: string;
@@ -8,6 +9,8 @@ interface KPICardProps {
   value: string | number;
   subtitle?: string;
   icon: React.ReactNode;
+  iconVariant?: SemanticIconVariant;
+  iconContainerClassName?: string;
   trend?: {
     value: string;
     isPositive?: boolean;
@@ -26,6 +29,8 @@ export function KPICard({
   value,
   subtitle,
   icon,
+  iconVariant,
+  iconContainerClassName,
   trend,
   highlight,
   warning,
@@ -34,6 +39,10 @@ export function KPICard({
   actionText,
 }: KPICardProps) {
   const isClickable = !!onClick;
+
+  // Determine default semantic variant from highlight/warning if not specified
+  const effectiveVariant: SemanticIconVariant =
+    iconVariant || (warning ? 'warning' : highlight ? 'payroll' : 'attendance');
 
   return (
     <div
@@ -57,18 +66,12 @@ export function KPICard({
             {value}
           </div>
         </div>
-        <div
-          className={cn(
-            'w-10 h-10 rounded-[12px] flex items-center justify-center shrink-0 transition-colors',
-            highlight
-              ? 'bg-[#714B67] text-white'
-              : warning
-              ? 'bg-[#FFF6D2] text-[#9A6B0A]'
-              : 'bg-[#F4F3F5] text-[#714B67]'
-          )}
-        >
-          {icon}
-        </div>
+        <SemanticIconTile
+          icon={icon}
+          variant={effectiveVariant}
+          size="dashboard"
+          className={iconContainerClassName}
+        />
       </div>
 
       {(subtitle || trend || actionText) && (

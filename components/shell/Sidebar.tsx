@@ -27,8 +27,11 @@ import {
   ChevronRight,
   ChevronDown,
   Building,
+  FileCheck,
+  Mail,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { SidebarBrand } from '@/components/brand/PeoplePayLogo';
 
 export function Sidebar() {
   const {
@@ -63,6 +66,7 @@ export function Sidebar() {
     { id: 'overview', label: 'Overview', icon: LayoutDashboard },
     { id: 'attendance', label: 'Attendance', icon: CalendarCheck },
     { id: 'leave', label: 'Leave', icon: Palmtree },
+    { id: 'my_loans', label: 'My Loans', icon: CreditCard },
     { id: 'payslips', label: 'My Payslips', icon: FileText },
     { id: 'profile', label: 'Profile', icon: User },
   ];
@@ -72,6 +76,16 @@ export function Sidebar() {
     { id: 'employees', label: 'Employees', icon: Users },
     { id: 'contracts', label: 'Contracts', icon: FileSpreadsheet },
     { id: 'working_schedules', label: 'Working Schedules', icon: CalendarDays },
+    {
+      id: 'medical_proofs',
+      label: 'Medical Proofs',
+      icon: FileCheck,
+    },
+    {
+      id: 'company_loans',
+      label: 'Employee Loans',
+      icon: CreditCard,
+    },
     {
       id: 'approvals',
       label: 'Approvals',
@@ -86,6 +100,8 @@ export function Sidebar() {
   const payrollNavItems: NavItem[] = [
     { id: 'payroll_dashboard', label: 'Payroll Dashboard', icon: BarChart3 },
     { id: 'payruns', label: 'Payruns', icon: CreditCard },
+    { id: 'bulk_email_dispatch', label: 'Bulk Email Dispatch', icon: Mail },
+    { id: 'company_loans', label: 'Loan Deductions', icon: CreditCard },
     { id: 'salary_structures', label: 'Salary Structures', icon: Layers },
     { id: 'salary_rules', label: 'Salary Rules', icon: Sliders },
     ...(currentRole === 'hr_payroll_manager' || currentRole === 'admin'
@@ -168,22 +184,9 @@ export function Sidebar() {
       <div className="p-4 border-b border-[#F4F3F5] flex items-center justify-between">
         <div
           onClick={() => setActiveTab('overview')}
-          className="flex items-center gap-2.5 cursor-pointer overflow-hidden"
+          className="cursor-pointer overflow-hidden flex-1"
         >
-          <div className="w-9 h-9 rounded-[12px] bg-gradient-to-br from-[#714B67] to-[#4D3348] flex items-center justify-center text-white font-black text-base shadow-xs shrink-0 ring-2 ring-[#FFF6D2]/50">
-            <span className="text-[#F4C430] mr-0.5">360</span>
-          </div>
-          {!isCollapsed && (
-            <div className="min-w-0">
-              <div className="flex items-center gap-1.5">
-                <span className="text-base font-extrabold tracking-tight text-[#4D3348]">PeoplePay</span>
-                <span className="text-base font-extrabold text-[#714B67]">360</span>
-              </div>
-              <p className="text-[10px] text-[#74717A] tracking-wider uppercase font-semibold">
-                Enterprise HR Suite
-              </p>
-            </div>
-          )}
+          <SidebarBrand isCollapsed={isCollapsed} />
         </div>
 
         {/* Collapse toggle */}
