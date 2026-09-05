@@ -42,6 +42,12 @@ export function ContractsView() {
   const expiringCount = contractsList.filter((c) => c.warningType === 'expiring_soon').length;
   const mismatchCount = contractsList.filter((c) => c.warningType === 'wage_mismatch').length;
 
+  const approveRenewal = (contract: Contract) => {
+    const approved = { ...contract, status: 'scheduled' as const, approvedAt: '2026-09-05' };
+    setContractsList((current) => current.map((item) => item.id === contract.id ? approved : item));
+    setSelectedContract(approved);
+  };
+
   return (
     <div className="space-y-6">
       {/* Top Banner */}
@@ -69,7 +75,7 @@ export function ContractsView() {
               <div>
                 <p className="font-bold">Contracts Expiring Within 30 Days ({expiringCount})</p>
                 <p className="mt-0.5 leading-relaxed">
-                  Fixed-term contracts for Deepak Chawla require renewal or permanent conversion prior to next payrun.
+                  Fixed-term contracts and generated renewal drafts require HR review before the next payrun.
                 </p>
               </div>
             </div>
@@ -171,7 +177,12 @@ export function ContractsView() {
                         <AlertTriangle className="w-3 h-3" /> Wage Mismatch
                       </span>
                     )}
-                    {!c.warningType && (
+                    {c.status === 'draft' && c.renewalOfContractId && (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-[#714B67] bg-[#F4EFF3] px-2 py-0.5 rounded border border-[#D8C7D4]">
+                        <Calendar className="w-3 h-3" /> Renewal Draft
+                      </span>
+                    )}
+                    {!c.warningType && !(c.status === 'draft' && c.renewalOfContractId) && (
                       <span className="text-[11px] text-[#438A6B] flex items-center gap-1">
                         <CheckCircle2 className="w-3 h-3" /> Validated
                       </span>
@@ -250,9 +261,18 @@ export function ContractsView() {
                     <strong>Audit Notice:</strong> {selectedContract.warningDetails}
                   </div>
                 )}
+                {selectedContract.renewalMode && (
+                  <div className="grid grid-cols-2 gap-2 rounded-[10px] border border-[#D8C7D4] bg-[#F4EFF3] p-3">
+                    <div><span className="block text-[10px] text-[#74717A]">Renewal mode</span><strong className="capitalize">{selectedContract.renewalMode}</strong></div>
+                    <div><span className="block text-[10px] text-[#74717A]">Renewal term</span><strong>{selectedContract.renewalTermMonths} months</strong></div>
+                    <div><span className="block text-[10px] text-[#74717A]">Renews contract</span><strong className="font-mono">{selectedContract.renewalOfContractId}</strong></div>
+                    <div><span className="block text-[10px] text-[#74717A]">Decision due</span><strong>{selectedContract.renewalDueDate ? formatDate(selectedContract.renewalDueDate) : '—'}</strong></div>
+                  </div>
+                )}
               </div>
 
-              <div className="mt-5 pt-3 border-t border-[#F4F3F5] flex justify-end">
+              <div className="mt-5 pt-3 border-t border-[#F4F3F5] flex justify-end gap-2">
+                {selectedContract.status === 'draft' && selectedContract.renewalOfContractId && <button onClick={() => approveRenewal(selectedContract)} className="px-4 py-2 bg-[#438A6B] text-white text-xs font-bold rounded-[10px]">Approve & schedule renewal</button>}
                 <button
                   onClick={() => setSelectedContract(null)}
                   className="px-4 py-2 bg-[#714B67] text-white text-xs font-semibold rounded-[10px]"

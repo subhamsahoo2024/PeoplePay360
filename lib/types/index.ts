@@ -105,6 +105,10 @@ export interface Contract {
   warnings?: string[];
   warningType?: 'expiring_soon' | 'wage_mismatch' | 'none';
   warningDetails?: string;
+  renewalMode?: 'manual' | 'automatic';
+  renewalTermMonths?: number;
+  renewalOfContractId?: string;
+  renewalDueDate?: string;
 }
 
 export interface WorkingScheduleDay {
