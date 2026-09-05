@@ -138,7 +138,32 @@ function MainContent() {
   );
 }
 
+const emptySubscribe = () => () => {};
+
 export default function Home() {
+  const isMounted = React.useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false
+  );
+
+  if (!isMounted) {
+    return (
+      <div className="min-h-screen bg-[#FBFAFB] text-[#28262D] flex items-center justify-center p-6">
+        <div className="flex flex-col items-center gap-4 text-center">
+          <div className="w-12 h-12 rounded-[14px] bg-[#714B67] text-white flex items-center justify-center font-bold text-xl shadow-md">
+            P
+          </div>
+          <div>
+            <h1 className="text-base font-bold text-[#28262D]">PeoplePay360</h1>
+            <p className="text-xs text-[#74717A] mt-1">Initializing enterprise workspace...</p>
+          </div>
+          <div className="w-6 h-6 rounded-full border-2 border-[#714B67] border-t-transparent animate-spin mt-2" />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <AppProvider>
       <MainContent />

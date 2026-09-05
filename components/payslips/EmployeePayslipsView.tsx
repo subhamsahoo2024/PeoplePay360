@@ -123,10 +123,10 @@ export function EmployeePayslipsView() {
               {myPayslips.map((ps) => (
                 <tr key={ps.id} className="hover:bg-[#FBFAFB] transition-colors">
                   <td className="py-3.5 px-4 font-semibold text-[#28262D]">
-                    {ps.period || ps.payrollPeriod}
+                    {ps.period}
                   </td>
                   <td className="py-3.5 px-4 font-mono text-[11px] text-[#714B67]">
-                    {ps.payslipNumber || ps.reference || ps.id.toUpperCase()}
+                    {ps.payslipNumber || `PS-2026-${ps.id.slice(-4).toUpperCase()}`}
                   </td>
                   <td className="py-3.5 px-4 font-medium tabular-nums">
                     {formatINR(ps.grossSalary)}

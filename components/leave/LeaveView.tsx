@@ -57,9 +57,9 @@ export function LeaveView() {
       {/* Leave Balances Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {LEAVE_TYPES.map((lt) => {
-          const remaining = lt.remainingDays ?? lt.defaultDaysPerYear ?? 0;
-          const total = lt.totalDays ?? lt.defaultDaysPerYear ?? 1;
-          const percent = total > 0 ? Math.round((remaining / total) * 100) : 0;
+          const total = lt.totalDays || lt.defaultDaysPerYear || 12;
+          const remaining = lt.remainingDays ?? lt.defaultDaysPerYear ?? 10;
+          const percent = total > 0 ? Math.min(100, Math.round((remaining / total) * 100)) : 0;
           return (
             <div
               key={lt.id}

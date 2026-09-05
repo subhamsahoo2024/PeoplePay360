@@ -32,7 +32,7 @@ export function WorkingSchedulesView() {
 
               <h3 className="text-sm font-bold text-[#28262D] mt-3">{sched.name}</h3>
               <p className="text-xs text-[#74717A] mt-0.5 leading-relaxed">
-                {sched.description || 'Standard 8-hour workday with flexible core hours and weekend rest.'}
+                {sched.description || `${sched.weeklyHours} hours/week structured shift pattern with core presence.`}
               </p>
 
               <div className="mt-4 pt-3 border-t border-[#F4F3F5] space-y-2 text-xs">
@@ -41,18 +41,22 @@ export function WorkingSchedulesView() {
                     <Clock className="w-3.5 h-3.5 text-[#A4879F]" /> Daily Standard Hours:
                   </span>
                   <strong className="text-[#28262D] tabular-nums">
-                    {sched.hoursPerDay || (sched.weeklyHours ? Math.round(sched.weeklyHours / 5) : 8)} Hours
+                    {sched.hoursPerDay || Math.round(sched.weeklyHours / (sched.days?.filter((d) => d.isWorking).length || 5)) || 8} Hours
                   </strong>
                 </div>
 
                 <div className="flex items-center justify-between">
                   <span className="text-[#74717A]">Weekly Working Days:</span>
-                  <strong className="text-[#28262D] tabular-nums">{sched.daysPerWeek || 5} Days (Mon-Fri)</strong>
+                  <strong className="text-[#28262D] tabular-nums">
+                    {sched.daysPerWeek || sched.days?.filter((d) => d.isWorking).length || 5} Days (Mon-Fri)
+                  </strong>
                 </div>
 
                 <div className="flex items-center justify-between">
                   <span className="text-[#74717A]">Lunch Break Allowance:</span>
-                  <strong className="text-[#28262D] tabular-nums">{sched.lunchBreakMinutes || 60} Minutes</strong>
+                  <strong className="text-[#28262D] tabular-nums">
+                    {sched.lunchBreakMinutes || sched.days?.[0]?.breakDurationMins || 60} Minutes
+                  </strong>
                 </div>
               </div>
             </div>

@@ -55,7 +55,7 @@ export function ContractsView() {
 
         <div className="flex items-center gap-2 text-xs">
           <span className="font-semibold text-[#438A6B] bg-[#EBF6F0] px-3 py-1.5 rounded-[10px] border border-[#C3E6D5]">
-            {contractsList.filter((c) => c.status === 'running' || c.status === 'active').length} Active Running
+            {contractsList.filter((c) => c.status === 'active').length} Active Contracts
           </span>
         </div>
       </div>
@@ -105,7 +105,7 @@ export function ContractsView() {
           </div>
 
           <div className="flex items-center gap-1 bg-[#F4F3F5] p-1 rounded-[10px]">
-            {['all', 'running', 'draft', 'expired'].map((s) => (
+            {['all', 'active', 'draft', 'expired'].map((s) => (
               <button
                 key={s}
                 onClick={() => setStatusFilter(s)}
@@ -155,7 +155,7 @@ export function ContractsView() {
                     {c.endDate ? formatDate(c.endDate) : <span className="text-[#A4879F]">Permanent</span>}
                   </td>
                   <td className="py-3.5 px-4 font-bold tabular-nums text-[#28262D]">
-                    {formatINR(c.wageMonthly || c.wage)}
+                    {formatINR(c.wageMonthly ?? c.wage)}
                   </td>
                   <td className="py-3.5 px-4 text-[#74717A] max-w-xs truncate">
                     {c.salaryStructureName}
@@ -222,13 +222,13 @@ export function ContractsView() {
                   <div>
                     <span className="text-[10px] text-[#74717A] block">Monthly Wage:</span>
                     <strong className="text-sm text-[#714B67] tabular-nums font-bold">
-                      {formatINR(selectedContract.wageMonthly || selectedContract.wage)}
+                      {formatINR(selectedContract.wageMonthly ?? selectedContract.wage)}
                     </strong>
                   </div>
                   <div>
                     <span className="text-[10px] text-[#74717A] block">Annual CTC:</span>
                     <strong className="text-sm text-[#28262D] tabular-nums font-bold">
-                      {formatINR(selectedContract.wageAnnual || ((selectedContract.wageMonthly || selectedContract.wage) * 12))}
+                      {formatINR(selectedContract.wageAnnual ?? (selectedContract.wageMonthly ?? selectedContract.wage) * 12)}
                     </strong>
                   </div>
                 </div>
@@ -240,7 +240,9 @@ export function ContractsView() {
 
                 <div>
                   <span className="text-[10px] text-[#74717A] block">Working Schedule:</span>
-                  <p className="font-medium text-[#28262D] mt-0.5">{selectedContract.workingScheduleName}</p>
+                  <p className="font-medium text-[#28262D] mt-0.5">
+                    {selectedContract.workingScheduleName || 'Standard Corporate Shift (9:30 AM - 6:30 PM)'}
+                  </p>
                 </div>
 
                 {selectedContract.warningDetails && (

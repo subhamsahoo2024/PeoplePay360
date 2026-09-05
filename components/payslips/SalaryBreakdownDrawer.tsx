@@ -33,42 +33,48 @@ export function SalaryBreakdownDrawer() {
 
   const ps = selectedPayslip;
 
-  const earningsList = (ps.earnings && ps.earnings.length > 0)
-    ? ps.earnings
-    : (ps.lines?.filter((l) => ['basic', 'allowance', 'overtime', 'adjustment'].includes(l.category)).map((l) => ({
-        ruleName: l.name,
-        ruleCode: l.code,
-        amount: l.amount,
-      })) || [
-        { ruleName: 'Basic Salary', ruleCode: 'BASIC', amount: ps.basicSalary },
-        { ruleName: 'House Rent Allowance (HRA)', ruleCode: 'HRA', amount: ps.hra },
-        { ruleName: 'Travel Allowance', ruleCode: 'TRAV', amount: ps.travelAllowance },
-        { ruleName: 'Special Allowance', ruleCode: 'SPEC', amount: ps.otherAllowances },
-      ]);
-
-  const deductionsList = (ps.deductions && ps.deductions.length > 0)
-    ? ps.deductions
-    : (ps.lines?.filter((l) => ['deduction', 'tax'].includes(l.category)).map((l) => ({
-        ruleName: l.name,
-        ruleCode: l.code,
-        amount: l.amount,
-      })) || [
-        { ruleName: 'Employee PF (12%)', ruleCode: 'PF_EE', amount: 1800 },
-        { ruleName: 'Professional Tax', ruleCode: 'PT', amount: 200 },
-        { ruleName: 'TDS (Income Tax)', ruleCode: 'TDS', amount: ps.taxDeduction || 750 },
-      ]);
-
-  const contributionsList = (ps.employerContributions && ps.employerContributions.length > 0)
-    ? ps.employerContributions
-    : [
-        { ruleName: 'Employer PF (3.67% EPF + 8.33% EPS)', amount: 1800 },
-        { ruleName: 'Gratuity Provision (4.81%)', amount: 1684 },
-      ];
-
   // Print function
   const handlePrint = () => {
     window.print();
   };
+
+  const payslipNumber = ps.payslipNumber || `PS-2026-${ps.id.slice(-4).toUpperCase()}`;
+  const period = ps.period || ps.payrollPeriod;
+  const designation = ps.jobPosition;
+  const bankAccount = currentEmployee.bankAccountMasked || '•••• •••• 4092';
+  const ifsc = currentEmployee.ifscCode || 'HDFC0001245';
+  const pan = currentEmployee.panNumber || 'ABCDE1234F';
+  const uan = currentEmployee.uanNumber || '100924881029';
+  const totalDaysInMonth = 30;
+  const paidDaysCount = ps.workedDays + (ps.paidLeaveDays || 0);
+  const lopDaysCount = ps.lopDays ?? ps.unpaidLeaveDays ?? 0;
+
+  const earningsList = ps.lines && ps.lines.length > 0
+    ? ps.lines
+        .filter((l) => l.category === 'basic' || l.category === 'allowance' || l.category === 'overtime')
+        .map((l) => ({ ruleName: l.name, ruleCode: l.code, amount: l.amount }))
+    : [
+        { ruleName: 'Basic Salary', ruleCode: 'BASIC', amount: ps.basicSalary },
+        { ruleName: 'House Rent Allowance (HRA)', ruleCode: 'HRA', amount: ps.hra },
+        { ruleName: 'Travel Allowance', ruleCode: 'TRAV', amount: ps.travelAllowance },
+        { ruleName: 'Other Allowances', ruleCode: 'OTHER', amount: ps.otherAllowances },
+      ];
+
+  const deductionsList = ps.lines && ps.lines.length > 0
+    ? ps.lines
+        .filter((l) => l.category === 'deduction' || l.category === 'tax')
+        .map((l) => ({ ruleName: l.name, ruleCode: l.code, amount: l.amount }))
+    : [
+        { ruleName: 'Provident Fund (PF)', ruleCode: 'PF_EMP', amount: 1800 },
+        { ruleName: 'Professional Tax (PT)', ruleCode: 'PT', amount: 200 },
+        { ruleName: 'Tax Deducted at Source (TDS)', ruleCode: 'TDS', amount: ps.taxDeduction || 750 },
+      ];
+
+  const employerContributionsList = [
+    { ruleName: 'Employer Provident Fund (12%)', amount: 1800 },
+    { ruleName: 'Gratuity Provision (4.81%)', amount: 1680 },
+    { ruleName: 'Group Health Insurance Coverage', amount: 1250 },
+  ];
 
   return (
     <AnimatePresence>
@@ -101,7 +107,7 @@ export function SalaryBreakdownDrawer() {
                     <StatusBadge status={ps.status} size="sm" />
                   </div>
                   <p className="text-xs text-[#74717A] mt-0.5">
-                    {ps.period} • Ref: <span className="font-mono text-[#714B67]">{ps.payslipNumber}</span>
+                    {period} • Ref: <span className="font-mono text-[#714B67]">{payslipNumber}</span>
                   </p>
                 </div>
               </div>
@@ -140,23 +146,23 @@ export function SalaryBreakdownDrawer() {
                     Department / Role
                   </span>
                   <span className="font-medium text-[#28262D]">{ps.department}</span>
-                  <span className="text-[#74717A] text-[11px] block">{ps.designation || ps.jobPosition}</span>
+                  <span className="text-[#74717A] text-[11px] block">{designation}</span>
                 </div>
 
                 <div>
                   <span className="text-[#74717A] text-[10px] uppercase font-bold tracking-wider block">
                     Bank & Account
                   </span>
-                  <span className="font-mono text-[#28262D]">{ps.bankAccountMasked || 'HDFC •••• 4912'}</span>
-                  <span className="text-[#74717A] text-[11px] block">IFSC: {ps.ifscCode || 'HDFC0001824'}</span>
+                  <span className="font-mono text-[#28262D]">{bankAccount}</span>
+                  <span className="text-[#74717A] text-[11px] block">IFSC: {ifsc}</span>
                 </div>
 
                 <div>
                   <span className="text-[#74717A] text-[10px] uppercase font-bold tracking-wider block">
                     PAN & UAN
                   </span>
-                  <span className="font-mono text-[#28262D]">PAN: {ps.panNumber || 'ABCDE1234F'}</span>
-                  <span className="text-[#74717A] text-[11px] block font-mono">UAN: {ps.uanNumber || '100982348123'}</span>
+                  <span className="font-mono text-[#28262D]">PAN: {pan}</span>
+                  <span className="text-[#74717A] text-[11px] block font-mono">UAN: {uan}</span>
                 </div>
               </div>
 
@@ -164,10 +170,10 @@ export function SalaryBreakdownDrawer() {
               <div className="p-3.5 rounded-[12px] bg-[#F4F3F5] border border-[#E4E1E5] flex items-center justify-between text-xs flex-wrap gap-2">
                 <div className="flex items-center gap-1.5 font-medium text-[#28262D]">
                   <Calendar className="w-4 h-4 text-[#714B67]" />
-                  <span>Calendar Days: <strong>{ps.workingDays ?? ps.workedDays ?? 30}</strong></span>
+                  <span>Calendar Days: <strong>{totalDaysInMonth}</strong></span>
                 </div>
-                <div>Paid Days: <strong className="text-[#438A6B]">{ps.paidDays ?? ((ps.workedDays ?? 30) + (ps.paidLeaveDays ?? 0))}</strong></div>
-                <div>LOP (Unpaid) Days: <strong className={(ps.lopDays ?? ps.unpaidLeaveDays ?? 0) > 0 ? 'text-[#C85A54]' : 'text-[#74717A]'}>{ps.lopDays ?? ps.unpaidLeaveDays ?? 0}</strong></div>
+                <div>Paid Days: <strong className="text-[#438A6B]">{paidDaysCount}</strong></div>
+                <div>LOP (Unpaid) Days: <strong className={lopDaysCount > 0 ? 'text-[#C85A54]' : 'text-[#74717A]'}>{lopDaysCount}</strong></div>
                 <div>Structure: <strong className="text-[#714B67]">{ps.salaryStructureName}</strong></div>
               </div>
 
@@ -247,7 +253,7 @@ export function SalaryBreakdownDrawer() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-3 text-xs">
-                  {contributionsList.map((c, idx) => (
+                  {employerContributionsList.map((c, idx) => (
                     <div key={idx} className="p-2.5 bg-white rounded-[10px] border border-[#E4E1E5] flex items-center justify-between">
                       <span className="text-[#74717A]">{c.ruleName}</span>
                       <strong className="text-[#28262D] tabular-nums">{formatINR(c.amount)}</strong>

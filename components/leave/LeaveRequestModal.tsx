@@ -65,7 +65,7 @@ export function LeaveRequestModal() {
     }
 
     // Check balance
-    const availablePaidDays = selectedType.remainingDays ?? currentEmployee.paidLeaveBalance ?? 8;
+    const availablePaidDays = selectedType.remainingDays ?? currentEmployee.paidLeaveBalance ?? selectedType.defaultDaysPerYear ?? 10;
     let paidDaysUsed = 0;
     let unpaidDays = 0;
 
@@ -183,9 +183,9 @@ export function LeaveRequestModal() {
                       <p className="text-[10px] text-[#74717A] truncate mt-0.5">{lt.name}</p>
                       <div className="mt-1 flex items-center justify-between text-[10px]">
                         <span className="font-semibold text-[#714B67] tabular-nums">
-                          {lt.remainingDays} left
+                          {lt.remainingDays ?? lt.defaultDaysPerYear} left
                         </span>
-                        <span className="text-[9px] text-[#A4879F]">/ {lt.totalDays}</span>
+                        <span className="text-[9px] text-[#A4879F]">/ {lt.totalDays ?? lt.defaultDaysPerYear}</span>
                       </div>
                     </button>
                   );

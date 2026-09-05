@@ -29,14 +29,21 @@ export function EmployeesDirectoryView() {
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [inspectEmployee, setInspectEmployee] = useState<Employee | null>(null);
 
-  const departments = ['all', ...Array.from(new Set(employees.map((e) => e.department)))];
+  const departments = [
+    'all',
+    ...Array.from(new Set(employees.map((e) => e.department || e.departmentName).filter(Boolean) as string[])),
+  ];
 
   const filtered = employees.filter((emp) => {
+    const empName = emp.name || '';
+    const empId = emp.employeeId || '';
+    const empRole = emp.jobPosition || '';
+    const empDept = emp.department || emp.departmentName || '';
     const matchesSearch =
-      emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      emp.employeeId.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      emp.jobPosition.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesDept = selectedDept === 'all' || emp.department === selectedDept;
+      empName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      empId.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      empRole.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesDept = selectedDept === 'all' || empDept === selectedDept;
     const matchesStatus = selectedStatus === 'all' || emp.currentAttendanceStatus === selectedStatus;
     return matchesSearch && matchesDept && matchesStatus;
   });
@@ -104,9 +111,9 @@ export function EmployeesDirectoryView() {
 
       {/* Employee Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filtered.map((emp) => (
+        {filtered.map((emp, idx) => (
           <div
-            key={emp.id}
+            key={emp.id || emp.employeeId || `emp-${idx}`}
             onClick={() => setInspectEmployee(emp)}
             className="p-5 bg-white rounded-[16px] border border-[#E4E1E5] shadow-xs hover:shadow-md hover:border-[#714B67]/30 transition-all duration-150 cursor-pointer flex flex-col justify-between group"
           >
@@ -133,7 +140,7 @@ export function EmployeesDirectoryView() {
               <div className="mt-4 pt-3 border-t border-[#F4F3F5] space-y-1.5 text-xs text-[#74717A]">
                 <div className="flex items-center gap-2">
                   <Building2 className="w-3.5 h-3.5 text-[#A4879F]" />
-                  <span>{emp.departmentName || emp.department} • {emp.workLocation || 'Bengaluru HQ'}</span>
+                  <span>{emp.department || emp.departmentName || 'General'} • {emp.workLocation || 'Bengaluru HQ'}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Mail className="w-3.5 h-3.5 text-[#A4879F]" />
@@ -144,7 +151,7 @@ export function EmployeesDirectoryView() {
 
             <div className="mt-4 pt-3 border-t border-[#F4F3F5] flex items-center justify-between text-xs">
               <span className="font-semibold text-[#28262D] tabular-nums">
-                {formatINR(emp.monthlySalaryGross || emp.baseSalary)} <span className="font-normal text-[#74717A] text-[10px]">/ mo</span>
+                {formatINR(emp.monthlySalaryGross)} <span className="font-normal text-[#74717A] text-[10px]">/ mo</span>
               </span>
               <span className="text-[11px] font-semibold text-[#714B67] group-hover:underline flex items-center gap-1">
                 View Dossier →
@@ -180,7 +187,7 @@ export function EmployeesDirectoryView() {
                     />
                     <div>
                       <h3 className="text-base font-bold text-[#28262D]">{inspectEmployee.name}</h3>
-                      <p className="text-xs text-[#74717A]">{inspectEmployee.jobPosition} • {inspectEmployee.departmentName || inspectEmployee.department}</p>
+                      <p className="text-xs text-[#74717A]">{inspectEmployee.jobPosition} • {inspectEmployee.department}</p>
                       <span className="text-[11px] font-mono text-[#714B67] font-semibold">
                         {inspectEmployee.employeeId}
                       </span>
@@ -220,19 +227,19 @@ export function EmployeesDirectoryView() {
                       <div>
                         <span className="text-[10px] text-[#74717A] block">Monthly Gross:</span>
                         <strong className="text-sm font-bold text-[#714B67] tabular-nums">
-                          {formatINR(inspectEmployee.monthlySalaryGross || inspectEmployee.baseSalary)}
+                          {formatINR(inspectEmployee.monthlySalaryGross ?? inspectEmployee.baseSalary)}
                         </strong>
                       </div>
                       <div>
                         <span className="text-[10px] text-[#74717A] block">Annual CTC:</span>
                         <strong className="text-sm font-bold text-[#28262D] tabular-nums">
-                          {formatINR(inspectEmployee.annualCTC || ((inspectEmployee.monthlySalaryGross || inspectEmployee.baseSalary) * 12))}
+                          {formatINR(inspectEmployee.annualCTC ?? (inspectEmployee.monthlySalaryGross ?? inspectEmployee.baseSalary) * 12)}
                         </strong>
                       </div>
                       <div className="col-span-2">
                         <span className="text-[10px] text-[#74717A] block">Assigned Structure:</span>
                         <strong className="font-medium text-[#28262D]">
-                          {inspectEmployee.salaryStructureName || 'Full-Time Professional'}
+                          {inspectEmployee.salaryStructureName || inspectEmployee.workingScheduleName || 'Standard Corporate Structure'}
                         </strong>
                       </div>
                     </div>
@@ -247,7 +254,7 @@ export function EmployeesDirectoryView() {
                     <div className="grid grid-cols-2 gap-2 text-xs pt-1">
                       <div>
                         <span className="text-[10px] text-[#74717A] block">Contract Reference:</span>
-                        <span className="font-mono text-[#28262D]">{inspectEmployee.contractReference || 'CNT-2026-081'}</span>
+                        <span className="font-mono text-[#28262D]">{inspectEmployee.contractReference || inspectEmployee.activeContractId || 'CNT-2024-STD'}</span>
                       </div>
                       <div>
                         <span className="text-[10px] text-[#74717A] block">Contract Status:</span>
@@ -284,7 +291,7 @@ export function EmployeesDirectoryView() {
                       </div>
                       <div>
                         <span className="text-[10px] text-[#74717A] block">EPFO UAN:</span>
-                        <span className="font-mono font-medium">{inspectEmployee.uanNumber || '100982348123'}</span>
+                        <span className="font-mono font-medium">{inspectEmployee.uanNumber || '100924881029'}</span>
                       </div>
                     </div>
                   </div>

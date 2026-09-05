@@ -33,7 +33,7 @@ export function WorkforceInsightsView() {
   // Headcount by department
   const deptMap: Record<string, number> = {};
   employees.forEach((e) => {
-    const dept = e.departmentName || e.department || 'General';
+    const dept = e.department || e.departmentName || 'General';
     deptMap[dept] = (deptMap[dept] || 0) + 1;
   });
   const deptData = Object.entries(deptMap).map(([name, value]) => ({ name, value }));

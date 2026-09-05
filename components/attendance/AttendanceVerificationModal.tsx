@@ -59,7 +59,7 @@ export function AttendanceVerificationModal() {
   };
 
   useEffect(() => {
-    let isCancelled = false;
+    let active = true;
     if (isCheckInModalOpen && activeTab === 'face') {
       const initCamera = async () => {
         try {
@@ -68,7 +68,7 @@ export function AttendanceVerificationModal() {
               video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } },
               audio: false,
             });
-            if (isCancelled) {
+            if (!active) {
               stream.getTracks().forEach((track) => track.stop());
               return;
             }
@@ -77,12 +77,12 @@ export function AttendanceVerificationModal() {
               videoRef.current.srcObject = stream;
             }
           } else {
-            if (!isCancelled) {
+            if (active) {
               setCameraError('Camera API not supported in current environment. Using simulated preview.');
             }
           }
         } catch (err: any) {
-          if (!isCancelled) {
+          if (active) {
             console.warn('Camera access error:', err);
             setCameraError('Camera permission denied or unavailable. Fallback simulation available.');
           }
@@ -93,13 +93,14 @@ export function AttendanceVerificationModal() {
       stopCamera();
     }
     return () => {
-      isCancelled = true;
+      active = false;
       stopCamera();
     };
   }, [isCheckInModalOpen, activeTab]);
 
   const handleClose = () => {
     stopCamera();
+    setCameraError(null);
     setFaceStatus('ready');
     setBioStatus('idle');
     setManualPin('');

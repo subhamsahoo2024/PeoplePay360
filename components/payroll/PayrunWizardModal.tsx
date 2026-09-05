@@ -33,7 +33,7 @@ export function PayrunWizardModal() {
   const selectedStructure =
     SALARY_STRUCTURES.find((s) => s.id === structureId) || SALARY_STRUCTURES[0];
 
-  const estimatedGross = employees.reduce((sum, e) => sum + (e.monthlySalaryGross || e.baseSalary || 65000), 0);
+  const estimatedGross = employees.reduce((sum, e) => sum + (e.monthlySalaryGross ?? e.baseSalary ?? 45000), 0);
   const estimatedDeductions = Math.round(estimatedGross * 0.068);
   const estimatedNet = estimatedGross - estimatedDeductions;
 

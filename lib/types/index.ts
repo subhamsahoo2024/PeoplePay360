@@ -57,11 +57,11 @@ export interface Employee {
   monthlySalaryGross?: number;
   annualCTC?: number;
   workLocation?: string;
+  salaryStructureName?: string;
   contractReference?: string;
   contractStatus?: 'active' | 'draft' | 'expired' | 'terminated' | 'running';
   dateOfJoining?: string;
   uanNumber?: string;
-  salaryStructureName?: string;
 }
 
 export interface Department {
@@ -90,6 +90,7 @@ export interface Contract {
   jobTitle?: string;
   salaryStructureId: string;
   salaryStructureName: string;
+  workingScheduleId?: string;
   workingScheduleName?: string;
   status: 'active' | 'draft' | 'expired' | 'terminated' | 'running';
   isActive: boolean;
@@ -110,13 +111,13 @@ export interface WorkingScheduleDay {
 export interface WorkingSchedule {
   id: string;
   name: string;
-  description?: string;
   type: 'standard' | 'shift' | 'flexible';
   weeklyHours: number;
+  days: WorkingScheduleDay[];
+  description?: string;
   hoursPerDay?: number;
   daysPerWeek?: number;
   lunchBreakMinutes?: number;
-  days: WorkingScheduleDay[];
 }
 
 export interface AttendanceRecord {
@@ -140,10 +141,10 @@ export interface LeaveType {
   code: string;
   isPaid: boolean;
   defaultDaysPerYear: number;
-  remainingDays?: number;
-  totalDays?: number;
   color: string;
   description: string;
+  remainingDays?: number;
+  totalDays?: number;
 }
 
 export interface LeaveBalance {
@@ -186,11 +187,11 @@ export interface SalaryStructure {
   id: string;
   name: string;
   code: string;
-  description?: string;
-  currency?: string;
   isActive?: boolean;
   assignedEmployeesCount?: number;
   ruleIds: string[];
+  description?: string;
+  currency?: string;
 }
 
 export interface SalaryRule {
@@ -202,9 +203,9 @@ export interface SalaryRule {
   calculationType: 'fixed' | 'percentage' | 'formula';
   fixedAmount?: number;
   percentage?: number;
-  formulaDisplay?: string;
-  formula?: string;
   baseRuleCode?: string;
+  formula?: string;
+  formulaDisplay?: string;
   condition?: string;
   isActive?: boolean;
   active?: boolean;
@@ -259,24 +260,16 @@ export interface Payslip {
   employeeCode: string;
   department: string;
   jobPosition: string;
-  designation?: string;
-  bankAccountMasked?: string;
-  ifscCode?: string;
-  panNumber?: string;
-  uanNumber?: string;
   contractId: string;
   salaryStructureId: string;
   salaryStructureName: string;
   payrollPeriod: string;
   period?: string;
   payslipNumber?: string;
-  reference?: string;
+  lopDays?: number;
   workedDays: number;
-  workingDays?: number;
-  paidDays?: number;
   paidLeaveDays: number;
   unpaidLeaveDays: number;
-  lopDays?: number;
   basicSalary: number;
   hra: number;
   travelAllowance: number;
@@ -294,9 +287,6 @@ export interface Payslip {
   status: PayrunStatus;
   warnings: string[];
   lines: PayslipLine[];
-  earnings?: { ruleName: string; ruleCode: string; amount: number }[];
-  deductions?: { ruleName: string; ruleCode: string; amount: number }[];
-  employerContributions?: { ruleName: string; amount: number }[];
   previousNetSalary?: number;
   difference?: number;
   percentageChange?: number;
