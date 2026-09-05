@@ -38,13 +38,24 @@ export async function buildPayslipPdf(ps:Payslip, employee:Employee, company={le
 
   const earnings=ps.lines.filter(l=>['basic','allowance','overtime','adjustment'].includes(l.category));
   const deductions=ps.lines.filter(l=>['deduction','tax'].includes(l.category));
-  const table=(title:string,rows:typeof ps.lines,x:number,y:number,w:number,color:[number,number,number])=>{doc.setFillColor(...color);doc.rect(x,y,w,8,'F');doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.text(title,x+3,y+5.3);let yy=y+8;rows.forEach(r=>{doc.setFillColor(yy%2?255:251,250,251);doc.rect(x,yy,w,8,'F');doc.setTextColor(...ink);doc.setFont('helvetica','normal');doc.text(r.name,x+3,yy+5.2,{maxWidth:w-30});doc.setFont('helvetica','bold');doc.text(money(r.amount),x+w-3,yy+5.2,{align:'right'});yy+=8});return yy};
-  const ey=table('EARNINGS',earnings,16,115,86,plum);const dy=table('DEDUCTIONS',deductions,108,115,86,[200,90,84]);const end=Math.max(ey,dy)+5;
-  doc.setDrawColor(228,225,229);doc.line(16,end,194,end);doc.setFontSize(9);doc.setTextColor(...ink);doc.text(`Gross salary: ${money(ps.grossSalary)}`,16,end+7);doc.text(`Employer contributions: ${money(4730)}`,16,end+13);doc.text(`Loan deduction: ${money(ps.lines.find(l=>l.code.includes('LOAN'))?.amount??0)}`,16,end+19);doc.text(`PF contribution: ${money(ps.lines.find(l=>l.code==='PF_EMP')?.amount??0)}`,16,end+25);
-  doc.setFillColor(...plum);doc.roundedRect(108,end+3,86,28,2,2,'F');doc.setTextColor(255,255,255);doc.setFontSize(9);doc.text(`Total deductions  ${money(ps.totalDeductions)}`,112,end+11);doc.text(`Overtime payment  ${money(ps.overtime)}`,112,end+17);doc.setFontSize(14);doc.setFont('helvetica','bold');doc.text(`NET  ${money(ps.netSalary)}`,190,end+26,{align:'right'});
-  doc.setTextColor(...ink);doc.setFontSize(8);doc.text('Net salary in words',16,end+39);doc.setFont('helvetica','bold');doc.text(amountInWords(ps.netSalary),16,end+44,{maxWidth:178});
+  const grossTotal=earnings.reduce((sum,line)=>sum+Number(line.amount),0);
+  const lineDeductions=deductions.reduce((sum,line)=>sum+Number(line.amount),0);
+  const hasLopLine=deductions.some(line=>['LOP','UNPAID_LEAVE','UNPAID_LEAVE_DEDUCTION'].includes(line.code));
+  const lossOfPay=hasLopLine?0:Number(ps.unpaidLeaveDeduction||0);
+  const deductionTotal=lineDeductions+lossOfPay;
+  const netTotal=grossTotal-deductionTotal;
+  const table=(title:string,rows:typeof ps.lines,x:number,y:number,w:number,color:[number,number,number],extra?:{name:string;amount:number})=>{
+    doc.setFillColor(...color);doc.rect(x,y,w,8,'F');doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(8);doc.text(title,x+3,y+5.3);doc.text('AMOUNT',x+w-3,y+5.3,{align:'right'});
+    let yy=y+8;const visible=extra?[...rows,{...rows[0],id:'pdf-lop',name:extra.name,amount:extra.amount}]:rows;
+    visible.forEach((row,index)=>{doc.setFillColor(index%2===0?251:255,index%2===0?250:255,index%2===0?251:255);doc.rect(x,yy,w,8,'F');doc.setTextColor(...ink);doc.setFont('helvetica','normal');doc.setFontSize(8);const label=doc.splitTextToSize(row.name,w-31)[0];doc.text(label,x+3,yy+5.2);doc.setFont('helvetica','bold');doc.text(money(Number(row.amount)),x+w-3,yy+5.2,{align:'right'});yy+=8});
+    doc.setDrawColor(228,225,229);doc.line(x,yy,x+w,yy);doc.setFont('helvetica','bold');doc.text('TOTAL',x+3,yy+6);doc.text(money(title==='EARNINGS'?grossTotal:deductionTotal),x+w-3,yy+6,{align:'right'});return yy+9;
+  };
+  const ey=table('EARNINGS',earnings,16,115,86,plum);const dy=table('DEDUCTIONS',deductions,108,115,86,[200,90,84],lossOfPay>0?{name:'Loss of pay',amount:lossOfPay}:undefined);const end=Math.max(ey,dy)+5;
+  doc.setDrawColor(228,225,229);doc.line(16,end,194,end);doc.setFontSize(9);doc.setTextColor(...ink);doc.text(`Gross earnings: ${money(grossTotal)}`,16,end+7);doc.text(`Overtime included: ${money(earnings.find(l=>l.code==='OT')?.amount??0)}`,16,end+13);doc.text(`Loan deduction: ${money(deductions.find(l=>l.code.includes('LOAN'))?.amount??0)}`,16,end+19);doc.text(`PF contribution: ${money(deductions.find(l=>l.code==='PF_EMP')?.amount??0)}`,16,end+25);
+  doc.setFillColor(...plum);doc.roundedRect(108,end+3,86,28,2,2,'F');doc.setTextColor(255,255,255);doc.setFontSize(9);doc.setFont('helvetica','normal');doc.text('Gross earnings',112,end+10);doc.text(money(grossTotal),190,end+10,{align:'right'});doc.text('Total deductions',112,end+16);doc.text(money(deductionTotal),190,end+16,{align:'right'});doc.setFontSize(14);doc.setFont('helvetica','bold');doc.text('NET PAY',112,end+26);doc.text(money(netTotal),190,end+26,{align:'right'});
+  doc.setTextColor(...ink);doc.setFontSize(8);doc.text('Net pay in words',16,end+39);doc.setFont('helvetica','bold');doc.text(amountInWords(netTotal),16,end+44,{maxWidth:178});
   doc.setFont('helvetica','normal');doc.setTextColor(...grey);doc.text('Important deductions',16,end+53);let noteY=end+58;deductions.slice(0,3).forEach(line=>{const note=`${line.name}: ${line.explanation??'Calculated under the applicable payroll rule.'}`;const split=doc.splitTextToSize(note,178);doc.text(split,16,noteY);noteY+=split.length*3.5+2});
-  const signY=Math.min(267,Math.max(235,noteY+8));doc.setDrawColor(116,116,122);doc.line(145,signY,194,signY);doc.setTextColor(...grey);doc.text('Authorized signatory',169.5,signY+5,{align:'center'});doc.text(`Generated: ${new Date().toLocaleDateString('en-IN')}`,16,signY+5);
+  const signY=Math.min(265,Math.max(230,noteY+8));doc.setTextColor(...plum);doc.setFont('times','italic');doc.setFontSize(12);doc.text('/s/ Payroll Manager',169.5,signY-3,{align:'center'});doc.setDrawColor(116,116,122);doc.line(145,signY,194,signY);doc.setTextColor(...grey);doc.setFont('helvetica','normal');doc.setFontSize(8);doc.text('Authorized Signatory',169.5,signY+5,{align:'center'});doc.text(company.legalName,169.5,signY+9,{align:'center',maxWidth:49});doc.text(`Generated: ${new Date().toLocaleDateString('en-IN')}`,16,signY+5);
   doc.setDrawColor(228,225,229);doc.line(16,280,194,280);doc.setFontSize(7);doc.text('This is a computer-generated payslip. No physical signature is required.',105,286,{align:'center'});
   return doc;
 }

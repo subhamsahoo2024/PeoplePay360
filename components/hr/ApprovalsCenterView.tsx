@@ -53,6 +53,19 @@ export function ApprovalsCenterView() {
   const pendingLeaves = leaveRequests.filter((l) => l.status === 'submitted');
   const pendingProfiles = profileRequests.filter((p) => p.status === 'pending');
   const pendingCorrections = correctionRequests.filter((c) => c.status === 'pending');
+  const activePendingCount = activeTab === 'leaves' ? pendingLeaves.length : activeTab === 'profiles' ? pendingProfiles.length : pendingCorrections.length;
+
+  const approveAllVisible = async () => {
+    if (processingId || activePendingCount === 0) return;
+    setProcessingId('all');
+    try {
+      if (activeTab === 'leaves') pendingLeaves.forEach((request) => approveLeaveRequest(request.id));
+      if (activeTab === 'profiles') pendingProfiles.forEach((request) => approveProfileRequest(request.id));
+      if (activeTab === 'corrections') pendingCorrections.forEach((request) => approveCorrectionRequest(request.id));
+    } finally {
+      setProcessingId(null);
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -66,6 +79,14 @@ export function ApprovalsCenterView() {
         </div>
 
         <div className="flex items-center gap-2">
+          <button
+            onClick={approveAllVisible}
+            disabled={activePendingCount === 0 || processingId !== null}
+            className="inline-flex items-center gap-1.5 rounded-[10px] bg-[#438A6B] px-3 py-2 text-xs font-bold text-white transition hover:bg-[#38765A] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Check className="h-4 w-4" />
+            {processingId === 'all' ? 'Approving…' : `One-click approve (${activePendingCount})`}
+          </button>
           <span className="text-xs font-bold px-3 py-1.5 rounded-full bg-[#FFF6D2] text-[#9A6B0A] border border-[#F8E29E]">
             {pendingLeaves.length + pendingProfiles.length + pendingCorrections.length} Total Pending
           </span>

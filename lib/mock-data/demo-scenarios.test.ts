@@ -28,6 +28,7 @@ describe('deterministic demo scenario seed', () => {
     expect(CONTRACTS.some((contract) => contract.status === 'running')).toBe(true);
     expect(CONTRACTS.some((contract) => contract.status === 'expired')).toBe(true);
     expect(CONTRACTS.some((contract) => contract.status === 'scheduled')).toBe(true);
+    expect(CONTRACTS.some((contract) => contract.status === 'draft' && contract.renewalMode === 'automatic' && Boolean(contract.renewalOfContractId))).toBe(true);
     expect(EMPLOYEES.some((employee) => employee.employeeType === 'intern')).toBe(true);
     expect(EMPLOYEES.some((employee) => !employee.bankAccountMasked)).toBe(true);
   });

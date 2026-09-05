@@ -125,4 +125,10 @@ export const CONTRACTS: Contract[] = [
   {
     id: 'cnt-12', employeeId: 'emp-2', employeeName: 'Priya Sundaram', contractReference: 'CNT-2026-HR-009', wage: 82000, startDate: '2026-10-01', endDate: '2027-09-30', department: 'Human Resources', jobPosition: 'People Operations Manager', salaryStructureId: 'str-1', salaryStructureName: 'Standard Corporate Salary Structure', status: 'scheduled', isActive: false, approvedAt: '2026-08-20', workingScheduleId:'ws-1', workingScheduleName:'Standard Corporate Shift (9:30 AM - 6:30 PM)'
   },
+  {
+    id: 'cnt-13', employeeId: 'emp-6', employeeName: 'Kavita Menon', contractReference: 'DRAFT-2026-PRD-021', wage: 70000, startDate: '2026-10-01', endDate: '2027-09-30', department: 'Product & Design', jobPosition: 'Lead Product Designer', salaryStructureId: 'str-2', salaryStructureName: 'Tech Engineering Salary Structure', status: 'draft', isActive: false, renewalMode: 'automatic', renewalTermMonths: 12, renewalOfContractId: 'cnt-6', renewalDueDate: '2026-09-20', warningType: 'expiring_soon', warningDetails: 'Auto-renewal draft generated from CNT-2023-PRD-020. HR approval will schedule the renewed term.'
+  },
+  {
+    id: 'cnt-14', employeeId: 'emp-11', employeeName: 'Meera Nambiar', contractReference: 'DRAFT-2026-HR-045', wage: 41000, startDate: '2026-10-15', endDate: '2027-10-14', department: 'Human Resources', jobPosition: 'Talent Acquisition Partner', salaryStructureId: 'str-1', salaryStructureName: 'Standard Corporate Salary Structure', status: 'draft', isActive: false, renewalMode: 'manual', renewalTermMonths: 12, renewalOfContractId: 'cnt-11', renewalDueDate: '2026-09-30', warningDetails: 'Renewal draft requires bank-detail verification before approval.'
+  },
 ];
