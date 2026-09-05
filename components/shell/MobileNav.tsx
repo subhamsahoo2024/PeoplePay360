@@ -70,7 +70,7 @@ export function MobileDrawer({ isOpen, onClose }: MobileDrawerProps) {
               <PeoplePayLogo size={32} />
               <div>
                 <PeoplePayWordmark size="sm" />
-                <p className="text-[10px] text-[#714B67] font-semibold">{currentUser.roleTitle}</p>
+                <p className="font-script text-sm text-[#714B67] font-semibold">{currentUser.roleTitle}</p>
               </div>
             </div>
             <button onClick={onClose} className="p-1 rounded-md text-[#74717A]">

@@ -87,27 +87,27 @@ export function PeoplePayWordmark({
       <div className="flex items-baseline whitespace-nowrap">
         <span
           className={cn(
-            'font-black tracking-tight text-[#28262D]',
-            size === 'sm' && 'text-sm',
-            size === 'md' && 'text-[17px]',
-            size === 'lg' && 'text-xl'
+            'font-script tracking-wide text-[#28262D]',
+            size === 'sm' && 'text-xl font-bold',
+            size === 'md' && 'text-[24px] font-bold',
+            size === 'lg' && 'text-3xl font-bold'
           )}
         >
           PeoplePay
         </span>
         <span
           className={cn(
-            'font-black tracking-tight text-[#714B67]',
-            size === 'sm' && 'text-sm ml-0.5',
-            size === 'md' && 'text-[17px] ml-0.5',
-            size === 'lg' && 'text-xl ml-1'
+            'font-script tracking-wide text-[#714B67]',
+            size === 'sm' && 'text-xl font-bold ml-1',
+            size === 'md' && 'text-[24px] font-bold ml-1.5',
+            size === 'lg' && 'text-3xl font-bold ml-2'
           )}
         >
           360
         </span>
       </div>
       {showSubtitle && (
-        <span className="text-[9.5px] uppercase font-bold tracking-wider text-[#A4879F] mt-1 whitespace-nowrap">
+        <span className="font-script text-[12px] font-semibold tracking-wide text-[#A4879F] -mt-0.5 whitespace-nowrap">
           Enterprise HR & Payroll
         </span>
       )}

@@ -50,7 +50,14 @@ export function ProfileView() {
     <div className="space-y-6">
       {/* Profile Header Card */}
       <div className="bg-white rounded-[18px] border border-[#E4E1E5] p-6 shadow-xs relative overflow-hidden">
-        <div className="absolute top-0 left-0 right-0 h-24 bg-gradient-to-r from-[#714B67] to-[#4D3348]" />
+        <div className="absolute top-0 left-0 right-0 h-24 bg-gradient-to-r from-[#714B67] to-[#4D3348] px-6 py-3 flex items-center justify-between">
+          <span className="font-script text-2xl md:text-3xl text-white font-bold tracking-wide">
+            My account
+          </span>
+          <span className="font-script text-xl text-[#FFF6D2] font-semibold">
+            Welcome, {currentEmployee.name.split(' ')[0]}
+          </span>
+        </div>
 
         <div className="relative pt-8 flex flex-col sm:flex-row items-start sm:items-end justify-between gap-4">
           <div className="flex items-end gap-4">
