@@ -168,7 +168,7 @@ export const AUDIT_EVENTS: AuditEvent[] = [
   },
   {
     id: 'aud-3',
-    user: 'Rajesh Patel (Global Admin)',
+    user: 'Sudeesh K (Global Admin)',
     role: 'Admin',
     action: 'Device Config Updated',
     target: 'Bengaluru Tech Center Reader A',
@@ -279,4 +279,3 @@ export const AUDIT_LOGS: AuditLogItem[] = [
     status: 'success',
   },
 ];
-

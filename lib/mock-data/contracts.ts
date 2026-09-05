@@ -64,7 +64,7 @@ export const CONTRACTS: Contract[] = [
   {
     id: 'cnt-5',
     employeeId: 'emp-5',
-    employeeName: 'Rajesh Patel',
+    employeeName: 'Sudeesh K',
     contractReference: 'CNT-2021-ADM-001',
     wage: 145000,
     startDate: '2021-03-01',

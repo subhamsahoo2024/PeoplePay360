@@ -47,8 +47,8 @@ export const DEMO_USERS: User[] = [
   },
   {
     id: 'usr-5',
-    name: 'Rajesh Patel',
-    email: 'rajesh.patel@peoplepay360.internal',
+    name: 'Sudeesh K',
+    email: 'sudeesh.k@peoplepay360.internal',
     role: 'admin',
     roleTitle: 'Admin',
     avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',

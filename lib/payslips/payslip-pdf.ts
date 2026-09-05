@@ -1,7 +1,9 @@
 import { jsPDF } from 'jspdf';
 import type { Employee, Payslip } from '@/lib/types';
 
-const money=(value:number)=>`₹${new Intl.NumberFormat('en-IN',{maximumFractionDigits:2}).format(value)}`;
+// jsPDF's built-in Helvetica font does not contain the rupee glyph. Keeping the
+// ISO currency code prevents glyph substitution and preserves column alignment.
+const money=(value:number)=>`INR ${new Intl.NumberFormat('en-IN',{minimumFractionDigits:2,maximumFractionDigits:2}).format(value)}`;
 const ones=['','One','Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten','Eleven','Twelve','Thirteen','Fourteen','Fifteen','Sixteen','Seventeen','Eighteen','Nineteen'];
 const tens=['','','Twenty','Thirty','Forty','Fifty','Sixty','Seventy','Eighty','Ninety'];
 function belowHundred(n:number){return n<20?ones[n]:`${tens[Math.floor(n/10)]}${n%10?` ${ones[n%10]}`:''}`}
@@ -55,7 +57,10 @@ export async function buildPayslipPdf(ps:Payslip, employee:Employee, company={le
   doc.setFillColor(...plum);doc.roundedRect(108,end+3,86,28,2,2,'F');doc.setTextColor(255,255,255);doc.setFontSize(9);doc.setFont('helvetica','normal');doc.text('Gross earnings',112,end+10);doc.text(money(grossTotal),190,end+10,{align:'right'});doc.text('Total deductions',112,end+16);doc.text(money(deductionTotal),190,end+16,{align:'right'});doc.setFontSize(14);doc.setFont('helvetica','bold');doc.text('NET PAY',112,end+26);doc.text(money(netTotal),190,end+26,{align:'right'});
   doc.setTextColor(...ink);doc.setFontSize(8);doc.text('Net pay in words',16,end+39);doc.setFont('helvetica','bold');doc.text(amountInWords(netTotal),16,end+44,{maxWidth:178});
   doc.setFont('helvetica','normal');doc.setTextColor(...grey);doc.text('Important deductions',16,end+53);let noteY=end+58;deductions.slice(0,3).forEach(line=>{const note=`${line.name}: ${line.explanation??'Calculated under the applicable payroll rule.'}`;const split=doc.splitTextToSize(note,178);doc.text(split,16,noteY);noteY+=split.length*3.5+2});
-  const signY=Math.min(265,Math.max(230,noteY+8));doc.setTextColor(...plum);doc.setFont('times','italic');doc.setFontSize(12);doc.text('/s/ Payroll Manager',169.5,signY-3,{align:'center'});doc.setDrawColor(116,116,122);doc.line(145,signY,194,signY);doc.setTextColor(...grey);doc.setFont('helvetica','normal');doc.setFontSize(8);doc.text('Authorized Signatory',169.5,signY+5,{align:'center'});doc.text(company.legalName,169.5,signY+9,{align:'center',maxWidth:49});doc.text(`Generated: ${new Date().toLocaleDateString('en-IN')}`,16,signY+5);
+  const signY=Math.min(265,Math.max(230,noteY+8));
+  doc.setTextColor(...plum);doc.setFont('times','italic');doc.setFontSize(16);doc.text('Sudeesh K',169.5,signY-5,{align:'center'});
+  doc.setDrawColor(...plum);doc.setLineWidth(.35);doc.line(151,signY-3,188,signY-6);doc.line(160,signY-2,181,signY-2.8);
+  doc.setDrawColor(116,116,122);doc.setLineWidth(.25);doc.line(145,signY,194,signY);doc.setTextColor(...grey);doc.setFont('helvetica','normal');doc.setFontSize(8);doc.text('Digitally authorized by Sudeesh K',169.5,signY+5,{align:'center'});doc.text('Payroll Administrator',169.5,signY+9,{align:'center'});doc.text(`Generated: ${new Date().toLocaleDateString('en-IN')}`,16,signY+5);
   doc.setDrawColor(228,225,229);doc.line(16,280,194,280);doc.setFontSize(7);doc.text('This is a computer-generated payslip. No physical signature is required.',105,286,{align:'center'});
   return doc;
 }

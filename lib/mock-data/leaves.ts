@@ -238,7 +238,7 @@ export const INITIAL_LEAVE_REQUESTS: LeaveRequest[] = [
     estimatedDeduction: 0,
     estimatedNetSalaryAfter: 75000,
     approverId: 'emp-5',
-    approverName: 'Rajesh Patel',
+    approverName: 'Sudeesh K',
     status: 'approved',
     appliedDate: '2026-08-25',
   },
