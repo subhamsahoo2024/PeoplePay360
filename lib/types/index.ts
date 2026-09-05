@@ -59,7 +59,7 @@ export interface Employee {
   workLocation?: string;
   salaryStructureName?: string;
   contractReference?: string;
-  contractStatus?: 'active' | 'draft' | 'expired' | 'terminated' | 'running';
+  contractStatus?: 'active' | 'draft' | 'scheduled' | 'expired' | 'terminated' | 'running';
   dateOfJoining?: string;
   uanNumber?: string;
 }
@@ -92,8 +92,11 @@ export interface Contract {
   salaryStructureName: string;
   workingScheduleId?: string;
   workingScheduleName?: string;
-  status: 'active' | 'draft' | 'expired' | 'terminated' | 'running';
+  status: 'active' | 'draft' | 'scheduled' | 'expired' | 'terminated' | 'running';
   isActive: boolean;
+  approvedAt?: string;
+  terminatedAt?: string;
+  terminationReason?: string;
   warnings?: string[];
   warningType?: 'expiring_soon' | 'wage_mismatch' | 'none';
   warningDetails?: string;
@@ -133,6 +136,20 @@ export interface AttendanceRecord {
   verificationMethod: 'face' | 'biometric' | 'manual';
   exceptionStatus?: 'normal' | 'late_arrival' | 'missing_checkout' | 'unauthorized_absence' | 'pending_correction';
   notes?: string;
+  locationVerification?: 'verified' | 'outside_allowed_location' | 'low_accuracy' | 'permission_denied' | 'unavailable';
+  latitude?: number;
+  longitude?: number;
+  accuracyMeters?: number;
+  distanceFromOfficeMeters?: number | null;
+}
+
+export interface AttendanceLocationCapture {
+  status: NonNullable<AttendanceRecord['locationVerification']>;
+  latitude?: number;
+  longitude?: number;
+  accuracyMeters?: number;
+  distanceFromOfficeMeters?: number | null;
+  capturedAt: string;
 }
 
 export interface LeaveType {
@@ -178,9 +195,11 @@ export interface LeaveRequest {
   estimatedNetSalaryAfter: number;
   approverId: string;
   approverName: string;
-  status: 'draft' | 'submitted' | 'approved' | 'refused' | 'cancelled';
+  status: 'draft' | 'submitted' | 'approved' | 'rejected' | 'cancelled';
   appliedDate: string;
   rejectionReason?: string;
+  rejectedBy?: string;
+  rejectedAt?: string;
 }
 
 export interface SalaryStructure {
@@ -516,6 +535,24 @@ export interface LumpSumPayment {
   newMonthlyDeduction?: number;
   newRemainingInstalments?: number;
   notes?: string;
+  principalComponent?: number;
+  interestComponent?: number;
+  reference?: string;
+  idempotencyKey?: string;
+}
+
+export interface LoanTransaction {
+  id: string;
+  loanId: string;
+  type: 'installment' | 'partial_lump_sum' | 'full_settlement' | 'adjustment';
+  amount: number;
+  principalComponent: number;
+  interestComponent: number;
+  balanceBefore: number;
+  balanceAfter: number;
+  paidOn: string;
+  reference: string;
+  idempotencyKey: string;
 }
 
 export interface LoanSettlement {
@@ -558,6 +595,10 @@ export interface EmployeeLoan {
   repaymentSchedule: LoanInstalment[];
   settlementRequest?: LoanSettlement;
   partialPayments?: LumpSumPayment[];
+  transactionHistory?: LoanTransaction[];
+  closedAt?: string;
+  closureType?: 'scheduled' | 'partial_lump_sum' | 'early_full';
+  closureReference?: string;
   approvedByHRDate?: string;
   approvedByPayrollDate?: string;
   pausedReason?: string;

@@ -15,19 +15,22 @@ import {
   CreditCard,
   CheckCircle2,
   AlertTriangle,
+  UserPlus,
 } from 'lucide-react';
 import { Employee } from '@/lib/types';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { formatINR, formatDate, cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
+import { CreateEmployeeAccountModal } from './CreateEmployeeAccountModal';
 
 export function EmployeesDirectoryView() {
-  const { employees } = useApp();
+  const { employees, currentRole } = useApp();
 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedDept, setSelectedDept] = useState('all');
   const [selectedStatus, setSelectedStatus] = useState('all');
   const [inspectEmployee, setInspectEmployee] = useState<Employee | null>(null);
+  const [isCreateOpen,setIsCreateOpen]=useState(false);
 
   const departments = [
     'all',
@@ -60,6 +63,7 @@ export function EmployeesDirectoryView() {
         </div>
 
         <div className="flex items-center gap-2 text-xs">
+          {(currentRole==='hr_manager'||currentRole==='admin')&&<button onClick={()=>setIsCreateOpen(true)} className="px-3 py-2 bg-[#714B67] text-white rounded-[10px] font-bold flex items-center gap-1.5"><UserPlus className="w-4 h-4"/>Create Employee Account</button>}
           <span className="font-semibold text-[#714B67] bg-[#F4F3F5] px-3 py-1.5 rounded-[10px] border border-[#E4E1E5]">
             {filtered.length} Employees Found
           </span>
@@ -123,7 +127,7 @@ export function EmployeesDirectoryView() {
                   <img
                     src={emp.avatar}
                     alt={emp.name}
-                    className="w-12 h-12 rounded-full object-cover border border-[#E4E1E5]"
+                    className="w-10 h-10 rounded-full object-cover border border-[#E4E1E5]"
                   />
                   <div>
                     <h3 className="text-sm font-bold text-[#28262D] group-hover:text-[#714B67] transition-colors">
@@ -151,7 +155,7 @@ export function EmployeesDirectoryView() {
 
             <div className="mt-4 pt-3 border-t border-[#F4F3F5] flex items-center justify-between text-xs">
               <span className="font-semibold text-[#28262D] tabular-nums">
-                {formatINR(emp.monthlySalaryGross)} <span className="font-normal text-[#74717A] text-[10px]">/ mo</span>
+                {formatINR(emp.monthlySalaryGross ?? emp.baseSalary)} <span className="font-normal text-[#74717A] text-[10px]">{emp.employeeType === 'intern' ? 'Monthly Stipend' : '/ mo'}</span>
               </span>
               <span className="text-[11px] font-semibold text-[#714B67] group-hover:underline flex items-center gap-1">
                 View Dossier →
@@ -225,7 +229,7 @@ export function EmployeesDirectoryView() {
 
                     <div className="grid grid-cols-2 gap-3 pt-1">
                       <div>
-                        <span className="text-[10px] text-[#74717A] block">Monthly Gross:</span>
+                        <span className="text-[10px] text-[#74717A] block">{inspectEmployee.employeeType === 'intern' ? 'Monthly Stipend:' : 'Monthly Gross:'}</span>
                         <strong className="text-sm font-bold text-[#714B67] tabular-nums">
                           {formatINR(inspectEmployee.monthlySalaryGross ?? inspectEmployee.baseSalary)}
                         </strong>
@@ -301,6 +305,7 @@ export function EmployeesDirectoryView() {
           </div>
         )}
       </AnimatePresence>
+      <CreateEmployeeAccountModal open={isCreateOpen} onClose={()=>setIsCreateOpen(false)}/>
     </div>
   );
 }

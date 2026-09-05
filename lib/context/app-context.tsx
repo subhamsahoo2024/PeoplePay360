@@ -16,6 +16,7 @@ import {
   AttendanceCorrectionRequest,
   PayrunStatus,
   BiometricDevice,
+  AttendanceLocationCapture,
 } from '@/lib/types';
 import { DEMO_USERS } from '@/lib/mock-data/users';
 import { EMPLOYEES } from '@/lib/mock-data/employees';
@@ -33,6 +34,8 @@ import {
   INITIAL_CORRECTION_REQUESTS,
   BIOMETRIC_DEVICES,
 } from '@/lib/mock-data/devices-and-audit';
+import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { assertPayrollCanFinalize } from '@/lib/domain/peoplepay-calculations';
 
 export interface ToastMessage {
   id: string;
@@ -94,7 +97,7 @@ interface AppContextType {
 
   // Real-time actions
   currentEmployee: Employee;
-  handleCheckInOut: (method: 'face' | 'biometric' | 'manual') => void;
+  handleCheckInOut: (method: 'face' | 'biometric' | 'manual', location?:AttendanceLocationCapture) => void;
   submitLeaveRequest: (request: Partial<LeaveRequest>) => void;
   approveLeaveRequest: (id: string) => void;
   refuseLeaveRequest: (id: string, reason?: string) => void;
@@ -119,6 +122,7 @@ const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [currentUser, setCurrentUserState] = useState<User>(DEMO_USERS[0]);
+  useEffect(()=>{const client=getSupabaseBrowserClient();if(!client)return;client.auth.getSession().then(async({data})=>{if(!data.session)return;const employee=await client.from('employees').select('onboarding_status').eq('user_id',data.session.user.id).maybeSingle();if(employee.data&&employee.data.onboarding_status!=='verified'&&window.location.pathname!=='/onboarding')window.location.assign('/onboarding')})},[]);
   const [activeTab, setActiveTab] = useState<string>('overview');
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
 
@@ -204,7 +208,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  const handleCheckInOut = (method: 'face' | 'biometric' | 'manual') => {
+  const handleCheckInOut = (method: 'face' | 'biometric' | 'manual', location?:AttendanceLocationCapture) => {
     const isCurrentlyIn = currentEmployee.currentAttendanceStatus === 'checked_in';
     const now = new Date();
     const timeStr = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
@@ -233,6 +237,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           verificationMethod: method,
           exceptionStatus: 'normal',
           notes: `Check-out recorded via ${method.toUpperCase()} verification`,
+          locationVerification:location?.status,
+          latitude:location?.latitude,longitude:location?.longitude,accuracyMeters:location?.accuracyMeters,distanceFromOfficeMeters:location?.distanceFromOfficeMeters,
         },
         ...prev.filter((a) => !(a.employeeId === currentEmployee.id && a.date === todayStr)),
       ]);
@@ -260,6 +266,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           verificationMethod: method,
           exceptionStatus: 'normal',
           notes: `Check-in recorded via ${method.toUpperCase()} verification`,
+          locationVerification:location?.status,
+          latitude:location?.latitude,longitude:location?.longitude,accuracyMeters:location?.accuracyMeters,distanceFromOfficeMeters:location?.distanceFromOfficeMeters,
         },
         ...prev.filter((a) => !(a.employeeId === currentEmployee.id && a.date === todayStr)),
       ]);
@@ -313,7 +321,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const refuseLeaveRequest = (id: string, reason?: string) => {
     setLeaveRequests((prev) =>
-      prev.map((r) => (r.id === id ? { ...r, status: 'refused', rejectionReason: reason } : r))
+      prev.map((r) => (r.id === id ? {
+        ...r,
+        status: 'rejected',
+        rejectionReason: reason,
+        rejectedBy: currentUser.name,
+        rejectedAt: '2026-09-05',
+      } : r))
     );
     addToast('warning', 'Leave Refused', 'The leave request has been declined.');
   };
@@ -419,6 +433,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   };
 
   const updatePayrunStatus = (payrunId: string, newStatus: PayrunStatus) => {
+    if(newStatus==='validated'||newStatus==='paid'){
+      try{payslips.filter(p=>p.payrunId===payrunId).forEach(p=>assertPayrollCanFinalize(p.lines.map(line=>({name:line.name,amount:line.amount,category:['basic','allowance','overtime','adjustment'].includes(line.category)?'earning':'deduction'}))))}catch(error){addToast('error','Payroll finalization blocked',error instanceof Error?error.message:'Deductions exceed earnings');return}
+    }
     setPayruns((prev) =>
       prev.map((p) => {
         if (p.id === payrunId) {

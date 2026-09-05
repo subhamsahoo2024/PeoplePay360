@@ -13,7 +13,7 @@ export const CONTRACTS: Contract[] = [
     jobPosition: 'Senior Software Engineer',
     salaryStructureId: 'str-2',
     salaryStructureName: 'Tech Engineering Salary Structure',
-    status: 'active',
+    status: 'running',
     isActive: true,
   },
   {
@@ -28,8 +28,8 @@ export const CONTRACTS: Contract[] = [
     jobPosition: 'People Operations Manager',
     salaryStructureId: 'str-1',
     salaryStructureName: 'Standard Corporate Salary Structure',
-    status: 'active',
-    isActive: true,
+    status: 'expired',
+    isActive: false,
   },
   {
     id: 'cnt-3',
@@ -43,8 +43,8 @@ export const CONTRACTS: Contract[] = [
     jobPosition: 'Senior Payroll Specialist',
     salaryStructureId: 'str-1',
     salaryStructureName: 'Standard Corporate Salary Structure',
-    status: 'active',
-    isActive: true,
+    status: 'expired',
+    isActive: false,
   },
   {
     id: 'cnt-4',
@@ -58,7 +58,7 @@ export const CONTRACTS: Contract[] = [
     jobPosition: 'Payroll Operations Director',
     salaryStructureId: 'str-3',
     salaryStructureName: 'Executive Leadership Salary Structure',
-    status: 'active',
+    status: 'running',
     isActive: true,
   },
   {
@@ -73,7 +73,7 @@ export const CONTRACTS: Contract[] = [
     jobPosition: 'Global HR Operations Administrator',
     salaryStructureId: 'str-3',
     salaryStructureName: 'Executive Leadership Salary Structure',
-    status: 'active',
+    status: 'running',
     isActive: true,
   },
   {
@@ -88,8 +88,8 @@ export const CONTRACTS: Contract[] = [
     jobPosition: 'Lead Product Designer',
     salaryStructureId: 'str-2',
     salaryStructureName: 'Tech Engineering Salary Structure',
-    status: 'active',
-    isActive: true,
+    status: 'expired',
+    isActive: false,
   },
   {
     id: 'cnt-7',
@@ -103,7 +103,7 @@ export const CONTRACTS: Contract[] = [
     jobPosition: 'Full Stack Engineer',
     salaryStructureId: 'str-2',
     salaryStructureName: 'Tech Engineering Salary Structure',
-    status: 'active',
+    status: 'running',
     isActive: true,
   },
   {
@@ -118,8 +118,11 @@ export const CONTRACTS: Contract[] = [
     jobPosition: 'Talent Acquisition Partner',
     salaryStructureId: 'str-1',
     salaryStructureName: 'Standard Corporate Salary Structure',
-    status: 'active',
-    isActive: true,
+    status: 'expired',
+    isActive: false,
     warnings: ['Missing bank details for electronic NEFT transfer'],
+  },
+  {
+    id: 'cnt-12', employeeId: 'emp-2', employeeName: 'Priya Sundaram', contractReference: 'CNT-2026-HR-009', wage: 82000, startDate: '2026-10-01', endDate: '2027-09-30', department: 'Human Resources', jobPosition: 'People Operations Manager', salaryStructureId: 'str-1', salaryStructureName: 'Standard Corporate Salary Structure', status: 'scheduled', isActive: false, approvedAt: '2026-08-20', workingScheduleId:'ws-1', workingScheduleName:'Standard Corporate Shift (9:30 AM - 6:30 PM)'
   },
 ];

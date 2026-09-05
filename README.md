@@ -6,7 +6,7 @@ PeoplePay360 is a role-based HR and payroll platform that connects employee reco
 
 The platform helps employees understand their salary and leave impact while helping HR and payroll teams identify errors before payment. Its core idea is simple: **every salary should be calculated correctly, verified before payment, and clearly explained to the employee.**
 
-> Current status: Frontend prototype built for the Odoo Hackathon 2026. Backend services, biometric devices, payroll processing, and persistent authentication are planned integrations.
+> Current status: the original demo UI is now accompanied by an additive Supabase compatibility layer, protected employee-invitation and onboarding routes, atomic leave/loan/payroll RPCs, private document exports, and domain regression tests. Some legacy screens still use deterministic mock state until a Supabase project is linked and seeded.
 
 ## Problem
 
@@ -176,7 +176,7 @@ The UI labels this value as an estimate. The final amount must come from the con
 
 ## Frontend Technology
 
-- [Next.js 16](https://nextjs.org/)
+- [Next.js 15](https://nextjs.org/)
 - TypeScript
 - Tailwind CSS
 - shadcn/ui
@@ -315,17 +315,52 @@ Available in the frontend prototype:
 - Payroll Impact Simulator
 - Responsive reports and dashboards
 
-Planned backend integrations:
+Implemented backend integration points:
 
-- Persistent authentication and role authorization
-- Odoo models and workflows
-- PostgreSQL storage
-- Attendance-device API or webhook
-- Secure face-template verification and liveness detection
-- Rule-based payroll computation
-- Payslip PDF generation
-- Email delivery
-- Audit logging
+- Supabase Auth clients and server-only Admin API usage
+- Additive PostgreSQL migrations that preserve the original schema and data
+- Role-checked, transactional leave review, loan payment, attendance, and bank-export RPCs
+- Private profile-photo, payslip, and bank-export storage
+- Real A4 PDF generation and short-lived signed downloads
+- Protected email-provider webhook adapter with delivery tracking
+- Audit records for privileged workflows
+
+Still external or deployment-specific:
+
+- A linked Supabase project and production credentials
+- Email provider credentials and webhook implementation
+- Physical biometric-device integration and production face liveness verification
+- A scheduler for the contract lifecycle RPC
+- Migrating the remaining legacy demo screens from local state to live queries
+
+## Supabase compatibility and deployment
+
+The legacy bootstrap file at `sql/initialization_query.sql` is intentionally unchanged. Run it only for a fresh database. For an existing PeoplePay360 database, apply only the ordered files in `supabase/migrations/`:
+
+```text
+20260905120000_peoplepay360_compatibility_extensions.sql
+20260905121000_peoplepay360_atomic_workflows.sql
+20260905122000_peoplepay360_rls_views.sql
+20260905123000_peoplepay360_calculation_rpcs.sql
+```
+
+The first migration safely backfills contract lifecycle values without removing `is_active`:
+
+```text
+is_active = true                         -> running
+is_active = false and start_date future -> scheduled
+is_active = false and end_date past     -> expired
+otherwise                               -> draft
+```
+
+After linking the Supabase CLI, regenerate the checked-in database type snapshot:
+
+```bash
+supabase link --project-ref <project-ref>
+npm run db:types
+```
+
+Run `supabase/tests/rls_policy_regression.sql` with pgTAP after applying migrations. It verifies that the original Employee, HR, Payroll User, Payroll Manager, and Admin policy paths still exist and that sensitive encrypted columns are not broadly selectable.
 
 ## Future Odoo Integration
 

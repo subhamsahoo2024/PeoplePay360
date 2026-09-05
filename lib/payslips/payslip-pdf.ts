@@ -1,0 +1,50 @@
+import { jsPDF } from 'jspdf';
+import type { Employee, Payslip } from '@/lib/types';
+
+const money=(value:number)=>`₹${new Intl.NumberFormat('en-IN',{maximumFractionDigits:2}).format(value)}`;
+const ones=['','One','Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten','Eleven','Twelve','Thirteen','Fourteen','Fifteen','Sixteen','Seventeen','Eighteen','Nineteen'];
+const tens=['','','Twenty','Thirty','Forty','Fifty','Sixty','Seventy','Eighty','Ninety'];
+function belowHundred(n:number){return n<20?ones[n]:`${tens[Math.floor(n/10)]}${n%10?` ${ones[n%10]}`:''}`}
+function belowThousand(n:number){return n<100?belowHundred(n):`${ones[Math.floor(n/100)]} Hundred${n%100?` ${belowHundred(n%100)}`:''}`}
+export function amountInWords(value:number){
+  let n=Math.floor(Math.abs(value)); if(n===0)return 'Zero Rupees Only';
+  const parts:string[]=[];
+  const units:[[number,string],[number,string],[number,string]]=[[10_000_000,'Crore'],[100_000,'Lakh'],[1_000,'Thousand']];
+  for(const [size,label] of units){if(n>=size){parts.push(`${belowThousand(Math.floor(n/size))} ${label}`);n%=size}}
+  if(n)parts.push(belowThousand(n)); return `${parts.join(' ')} Rupees Only`;
+}
+
+async function imageData(path:string){
+  try { const blob=await fetch(path).then(r=>r.ok?r.blob():Promise.reject()); return await new Promise<string>((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve(String(reader.result));reader.onerror=reject;reader.readAsDataURL(blob)}); } catch { return undefined; }
+}
+
+export async function buildPayslipPdf(ps:Payslip, employee:Employee, company={legalName:'PeoplePay360 Technologies Private Limited',address:'Bengaluru, Karnataka, India'}, logoDataUrl?:string) {
+  const doc=new jsPDF({unit:'mm',format:'a4',orientation:'portrait',compress:true});
+  const plum:[number,number,number]=[113,75,103]; const ink:[number,number,number]=[47,47,51]; const grey:[number,number,number]=[116,116,122];
+  const logo=logoDataUrl ?? (typeof window !== 'undefined' ? await imageData('/logo.png') : undefined);
+  if(logo) doc.addImage(logo,'PNG',16,12,28,16,undefined,'FAST');
+  doc.setTextColor(...plum);doc.setFont('helvetica','bold');doc.setFontSize(14);doc.text(company.legalName,194,16,{align:'right'});
+  doc.setTextColor(...grey);doc.setFont('helvetica','normal');doc.setFontSize(8);doc.text(company.address,194,21,{align:'right',maxWidth:120});
+  doc.setDrawColor(113,75,103);doc.setLineWidth(.5);doc.line(16,32,194,32);
+  doc.setTextColor(...ink);doc.setFont('helvetica','bold');doc.setFontSize(18);doc.text(employee.employeeType==='intern'?'STIPEND SLIP':'PAYSLIP',16,43);
+  doc.setFontSize(9);doc.setTextColor(...grey);doc.text(ps.payrollPeriod,16,49);doc.text(ps.payslipNumber??ps.id,194,45,{align:'right'});
+
+  const info=[['Employee',ps.employeeName],['Employee ID',ps.employeeCode],['Department',ps.department],['Designation',ps.jobPosition],['Joining date',employee.joiningDate],['Bank account',employee.bankAccountMasked],['PAN',employee.panNumber||'—'],['UAN',employee.uanNumber||'—']];
+  doc.setFillColor(251,250,251);doc.roundedRect(16,55,178,33,2,2,'F');doc.setFontSize(8);
+  info.forEach(([label,value],i)=>{const col=i%4,row=Math.floor(i/4),x=20+col*43.5,y=63+row*14;doc.setTextColor(...grey);doc.setFont('helvetica','normal');doc.text(label,x,y);doc.setTextColor(...ink);doc.setFont('helvetica','bold');doc.text(String(value),x,y+4,{maxWidth:39})});
+  const lop=ps.lopDays??ps.unpaidLeaveDays??0;const otHours=ps.lines.find(l=>l.category==='overtime')?.hoursAffected??0;
+  const metrics=[['Paid days',String(ps.workedDays+ps.paidLeaveDays)],['Unpaid-leave days',String(lop)],['Overtime hours',String(otHours)],['Actual loss of pay',money(ps.unpaidLeaveDeduction)]];
+  metrics.forEach(([l,v],i)=>{const x=16+i*44.5;doc.setDrawColor(228,225,229);doc.rect(x,93,42,16);doc.setTextColor(...grey);doc.setFont('helvetica','normal');doc.text(l,x+3,99);doc.setTextColor(...ink);doc.setFont('helvetica','bold');doc.setFontSize(10);doc.text(v,x+3,105);doc.setFontSize(8)});
+
+  const earnings=ps.lines.filter(l=>['basic','allowance','overtime','adjustment'].includes(l.category));
+  const deductions=ps.lines.filter(l=>['deduction','tax'].includes(l.category));
+  const table=(title:string,rows:typeof ps.lines,x:number,y:number,w:number,color:[number,number,number])=>{doc.setFillColor(...color);doc.rect(x,y,w,8,'F');doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.text(title,x+3,y+5.3);let yy=y+8;rows.forEach(r=>{doc.setFillColor(yy%2?255:251,250,251);doc.rect(x,yy,w,8,'F');doc.setTextColor(...ink);doc.setFont('helvetica','normal');doc.text(r.name,x+3,yy+5.2,{maxWidth:w-30});doc.setFont('helvetica','bold');doc.text(money(r.amount),x+w-3,yy+5.2,{align:'right'});yy+=8});return yy};
+  const ey=table('EARNINGS',earnings,16,115,86,plum);const dy=table('DEDUCTIONS',deductions,108,115,86,[200,90,84]);const end=Math.max(ey,dy)+5;
+  doc.setDrawColor(228,225,229);doc.line(16,end,194,end);doc.setFontSize(9);doc.setTextColor(...ink);doc.text(`Gross salary: ${money(ps.grossSalary)}`,16,end+7);doc.text(`Employer contributions: ${money(4730)}`,16,end+13);doc.text(`Loan deduction: ${money(ps.lines.find(l=>l.code.includes('LOAN'))?.amount??0)}`,16,end+19);doc.text(`PF contribution: ${money(ps.lines.find(l=>l.code==='PF_EMP')?.amount??0)}`,16,end+25);
+  doc.setFillColor(...plum);doc.roundedRect(108,end+3,86,28,2,2,'F');doc.setTextColor(255,255,255);doc.setFontSize(9);doc.text(`Total deductions  ${money(ps.totalDeductions)}`,112,end+11);doc.text(`Overtime payment  ${money(ps.overtime)}`,112,end+17);doc.setFontSize(14);doc.setFont('helvetica','bold');doc.text(`NET  ${money(ps.netSalary)}`,190,end+26,{align:'right'});
+  doc.setTextColor(...ink);doc.setFontSize(8);doc.text('Net salary in words',16,end+39);doc.setFont('helvetica','bold');doc.text(amountInWords(ps.netSalary),16,end+44,{maxWidth:178});
+  doc.setFont('helvetica','normal');doc.setTextColor(...grey);doc.text('Important deductions',16,end+53);let noteY=end+58;deductions.slice(0,3).forEach(line=>{const note=`${line.name}: ${line.explanation??'Calculated under the applicable payroll rule.'}`;const split=doc.splitTextToSize(note,178);doc.text(split,16,noteY);noteY+=split.length*3.5+2});
+  const signY=Math.min(267,Math.max(235,noteY+8));doc.setDrawColor(116,116,122);doc.line(145,signY,194,signY);doc.setTextColor(...grey);doc.text('Authorized signatory',169.5,signY+5,{align:'center'});doc.text(`Generated: ${new Date().toLocaleDateString('en-IN')}`,16,signY+5);
+  doc.setDrawColor(228,225,229);doc.line(16,280,194,280);doc.setFontSize(7);doc.text('This is a computer-generated payslip. No physical signature is required.',105,286,{align:'center'});
+  return doc;
+}

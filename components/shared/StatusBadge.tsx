@@ -34,6 +34,7 @@ export function StatusBadge({ status, className, size = 'md' }: StatusBadgeProps
     case 'active':
     case 'checked_in':
     case 'present':
+    case 'running':
       bg = 'bg-[#EBF6F0] text-[#438A6B] border-[#C3E6D5]';
       icon = norm === 'checked_in' ? <UserCheck className="w-3.5 h-3.5" /> : <CheckCircle2 className="w-3.5 h-3.5" />;
       if (norm === 'checked_in') text = 'Checked In';
@@ -46,9 +47,11 @@ export function StatusBadge({ status, className, size = 'md' }: StatusBadgeProps
     case 'probation':
     case 'late':
     case 'late_arrival':
+    case 'scheduled':
       bg = 'bg-[#FFF6D2] text-[#9A6B0A] border-[#F8E29E]';
       icon = <Clock className="w-3.5 h-3.5" />;
       if (norm === 'late_arrival') text = 'Late Arrival';
+      if (norm === 'scheduled') text = 'Scheduled / Upcoming';
       break;
 
     case 'validated':
@@ -66,6 +69,7 @@ export function StatusBadge({ status, className, size = 'md' }: StatusBadgeProps
       bg = 'bg-[#FDF1F0] text-[#C85A54] border-[#F6CBC8]';
       icon = norm === 'absent' ? <UserX className="w-3.5 h-3.5" /> : <XCircle className="w-3.5 h-3.5" />;
       if (norm === 'unauthorized_absence') text = 'Unauthorized Absence';
+      if (norm === 'rejected') text = 'Refused';
       break;
 
     case 'checked_out':

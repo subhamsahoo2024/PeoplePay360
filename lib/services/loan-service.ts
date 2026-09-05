@@ -4,6 +4,7 @@ import {
   LumpSumPayment,
   LoanSettlement,
   LoanStatus,
+  LoanTransaction,
 } from '@/lib/types';
 import {
   COMPANY_LOAN_POLICY,
@@ -119,23 +120,32 @@ class LoanService {
     if (idx === -1) throw new Error('Loan record not found');
 
     const loan = this.loans[idx];
+    const idempotencyKey = payment.idempotencyKey || `lump:${loanId}:${payment.paymentDate}:${payment.paymentAmount}:${payment.paymentMethod}`;
+    if (loan.transactionHistory?.some(t=>t.idempotencyKey===idempotencyKey)) return loan;
     const preOutstanding = loan.outstandingTotal;
-    const postOutstanding = Math.max(0, preOutstanding - payment.paymentAmount);
+    if (payment.paymentAmount <= 0 || payment.paymentAmount > preOutstanding) throw new Error('Payment must be positive and cannot exceed the outstanding balance');
+    const interestComponent = Math.min(payment.paymentAmount,loan.outstandingInterest);
+    const principalComponent = Math.min(loan.outstandingPrincipal,payment.paymentAmount-interestComponent);
+    const nextInterest = Math.max(0,loan.outstandingInterest-interestComponent);
+    const nextPrincipal = Math.max(0,loan.outstandingPrincipal-principalComponent);
+    const postOutstanding = nextPrincipal+nextInterest;
 
     let newMonthlyDeduction = loan.monthlyPayrollDeduction;
     let newSchedule = [...loan.repaymentSchedule];
+    const historical = newSchedule.filter(i=>i.status==='deducted'||i.status==='partially_paid');
 
     if (payment.repaymentAdjustment === 'reduce_monthly_deduction') {
       const remainingMonths = Math.max(1, loan.remainingInstalments);
       newMonthlyDeduction = Math.max(2000, Math.round(postOutstanding / remainingMonths));
     } else {
       // Reduce tenure: recalculate schedule with smaller number of instalments
-      newSchedule = generateRepaymentSchedule(
-        loan.outstandingPrincipal - payment.paymentAmount,
+      const recalculated = generateRepaymentSchedule(
+        nextPrincipal,
         loan.annualInterestRate,
         loan.monthlyPayrollDeduction,
         'Oct 2026'
-      );
+      ).map((item,index)=>({...item,id:`${loan.id}-recalc-${Date.now()}-${index}`,instalmentNumber:historical.length+index+1}));
+      newSchedule = [...historical,...recalculated];
     }
 
     const lumpSumRecord: LumpSumPayment = {
@@ -146,17 +156,25 @@ class LoanService {
       postOutstanding,
       newMonthlyDeduction,
       newRemainingInstalments: newSchedule.length,
+      principalComponent,
+      interestComponent,
+      reference: payment.reference || `${payment.paymentMethod.toUpperCase()}-${payment.paymentDate}`,
+      idempotencyKey,
     };
+
+    const transaction:LoanTransaction={id:`txn-${Date.now()}`,loanId,type:'partial_lump_sum',amount:payment.paymentAmount,principalComponent,interestComponent,balanceBefore:preOutstanding,balanceAfter:postOutstanding,paidOn:payment.paymentDate,reference:lumpSumRecord.reference!,idempotencyKey};
 
     const updated: EmployeeLoan = {
       ...loan,
       amountRepaid: loan.amountRepaid + payment.paymentAmount,
-      outstandingPrincipal: Math.max(0, loan.outstandingPrincipal - payment.paymentAmount),
+      outstandingPrincipal: nextPrincipal,
+      outstandingInterest: nextInterest,
       outstandingTotal: postOutstanding,
       monthlyPayrollDeduction: newMonthlyDeduction,
       remainingInstalments: newSchedule.length,
       status: postOutstanding === 0 ? 'closed' : 'partially_repaid',
       partialPayments: [...(loan.partialPayments || []), lumpSumRecord],
+      transactionHistory: [...(loan.transactionHistory || []),transaction],
       repaymentSchedule: newSchedule,
     };
 
@@ -192,17 +210,29 @@ class LoanService {
     return updated;
   }
 
-  async closeLoan(loanId: string): Promise<EmployeeLoan> {
+  async closeLoan(loanId: string, reference = `SETTLEMENT-${loanId}`, idempotencyKey = `settlement:${loanId}`): Promise<EmployeeLoan> {
     const idx = this.loans.findIndex((l) => l.id === loanId);
     if (idx === -1) throw new Error('Loan record not found');
 
+    const loan=this.loans[idx];
+    if (loan.status==='closed') return loan;
+    if (loan.transactionHistory?.some(t=>t.idempotencyKey===idempotencyKey)) return loan;
+    const amount=loan.outstandingTotal;
+    const transaction:LoanTransaction={id:`txn-${Date.now()}`,loanId,type:'full_settlement',amount,principalComponent:loan.outstandingPrincipal,interestComponent:loan.outstandingInterest,balanceBefore:amount,balanceAfter:0,paidOn:new Date().toISOString().slice(0,10),reference,idempotencyKey};
     const updated: EmployeeLoan = {
-      ...this.loans[idx],
+      ...loan,
       status: 'closed',
       outstandingPrincipal: 0,
       outstandingInterest: 0,
       outstandingTotal: 0,
       remainingInstalments: 0,
+      closedAt: transaction.paidOn,
+      closureType: 'early_full',
+      closureReference: reference,
+      amountRepaid: loan.amountRepaid+amount,
+      transactionHistory:[...(loan.transactionHistory||[]),transaction],
+      repaymentSchedule:loan.repaymentSchedule.map(i=>i.status==='upcoming'||i.status==='overdue'||i.status==='partially_paid'?{...i,status:'settled'}:i),
+      settlementRequest:loan.settlementRequest?{...loan.settlementRequest,status:'settled'}:loan.settlementRequest,
     };
     this.loans[idx] = updated;
     return updated;

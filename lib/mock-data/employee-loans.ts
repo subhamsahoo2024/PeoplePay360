@@ -106,6 +106,8 @@ export const INITIAL_EMPLOYEE_LOANS: EmployeeLoan[] = [
     purpose: 'Home renovation and employee relocation deposit',
     supportingDocName: 'Rental_Agreement_Agreement_Proof.pdf',
     repaymentSchedule: ROHAN_SCHEDULE,
+    partialPayments: [{id:'lump-demo-001',loanId:'loan-001',paymentAmount:10000,paymentDate:'2026-06-15',paymentMethod:'bank_transfer',preOutstanding:79400,postOutstanding:69400,repaymentAdjustment:'reduce_tenure',principalComponent:9850,interestComponent:150,reference:'UTR-DEMO-10001',idempotencyKey:'demo-lump-001'}],
+    transactionHistory: [{id:'txn-demo-001',loanId:'loan-001',type:'partial_lump_sum',amount:10000,principalComponent:9850,interestComponent:150,balanceBefore:79400,balanceAfter:69400,paidOn:'2026-06-15',reference:'UTR-DEMO-10001',idempotencyKey:'demo-lump-001'}],
     approvedByHRDate: '2026-01-20',
     approvedByPayrollDate: '2026-01-24',
   },
@@ -174,6 +176,8 @@ export const INITIAL_EMPLOYEE_LOANS: EmployeeLoan[] = [
     approvedByHRDate: '2025-12-20',
     approvedByPayrollDate: '2025-12-28',
   },
+  {
+    id: 'loan-005', loanNumber: 'LN-2025-0020', employeeId: 'emp-5', employeeName: 'Rajesh Patel', department: 'Administration', principalAmount: 40000, annualInterestRate: 6, interestMethod: 'reducing_balance', totalPayableAmount: 41800, amountRepaid: 41800, outstandingPrincipal: 0, outstandingInterest: 0, outstandingTotal: 0, monthlyPayrollDeduction: 5000, totalInstalments: 9, remainingInstalments: 0, nextDeductionDate: '', loanStartDate: '01 Oct 2025', expectedCompletionDate: '01 Jun 2026', status: 'closed', purpose: 'Relocation advance', repaymentSchedule: generateRepaymentSchedule(40000,6,5000,'Oct 2025').map(i=>({...i,status:'settled'})), closedAt:'2026-05-12', closureType:'early_full', closureReference:'UTR-DEMO-CLOSE-001', transactionHistory:[{id:'txn-demo-close',loanId:'loan-005',type:'full_settlement',amount:11800,principalComponent:11500,interestComponent:300,balanceBefore:11800,balanceAfter:0,paidOn:'2026-05-12',reference:'UTR-DEMO-CLOSE-001',idempotencyKey:'demo-close-001'}]},
   {
     id: 'loan-004',
     loanNumber: 'LN-2026-0051',

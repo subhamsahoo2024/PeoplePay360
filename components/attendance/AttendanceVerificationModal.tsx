@@ -15,8 +15,18 @@ import {
   Sparkles,
   Shield,
   Clock,
+  MapPin,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { verifyLocation } from '@/lib/domain/peoplepay-calculations';
+import type { AttendanceLocationCapture } from '@/lib/types';
+
+const DEMO_OFFICE = {
+  latitude: 12.9716,
+  longitude: 77.5946,
+  allowedRadiusMeters: 150,
+  maximumAccuracyMeters: 100,
+};
 
 export function AttendanceVerificationModal() {
   const {
@@ -49,6 +59,48 @@ export function AttendanceVerificationModal() {
   const [manualPin, setManualPin] = useState('');
   const [manualNote, setManualNote] = useState('');
   const [manualError, setManualError] = useState('');
+  const [location, setLocation] = useState<AttendanceLocationCapture | null>(null);
+  const [isLocating, setIsLocating] = useState(true);
+
+  useEffect(() => {
+    if (!isCheckInModalOpen) return;
+
+    if (!navigator.geolocation) {
+      queueMicrotask(() => {
+        setLocation({ status: 'unavailable', capturedAt: new Date().toISOString() });
+        setIsLocating(false);
+      });
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const result = verifyLocation({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          accuracyMeters: position.coords.accuracy,
+          office: DEMO_OFFICE,
+        });
+        setLocation({
+          status: result.status,
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude,
+          accuracyMeters: position.coords.accuracy,
+          distanceFromOfficeMeters: result.distanceMeters,
+          capturedAt: new Date().toISOString(),
+        });
+        setIsLocating(false);
+      },
+      (error) => {
+        setLocation({
+          status: error.code === error.PERMISSION_DENIED ? 'permission_denied' : 'unavailable',
+          capturedAt: new Date().toISOString(),
+        });
+        setIsLocating(false);
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+    );
+  }, [isCheckInModalOpen]);
 
   // Start / Stop Camera for Face Verification
   const stopCamera = () => {
@@ -105,6 +157,8 @@ export function AttendanceVerificationModal() {
     setBioStatus('idle');
     setManualPin('');
     setManualNote('');
+    setLocation(null);
+    setIsLocating(true);
     setIsCheckInModalOpen(false);
   };
 
@@ -117,7 +171,7 @@ export function AttendanceVerificationModal() {
         setFaceStatus('verified');
         setTimeout(() => {
           stopCamera();
-          handleCheckInOut('face');
+          handleCheckInOut('face',location??undefined);
         }, 1200);
       }, 1500);
     }, 1200);
@@ -132,7 +186,7 @@ export function AttendanceVerificationModal() {
       } else {
         setBioStatus('matched');
         setTimeout(() => {
-          handleCheckInOut('biometric');
+          handleCheckInOut('biometric',location??undefined);
         }, 1000);
       }
     }, 1600);
@@ -145,7 +199,7 @@ export function AttendanceVerificationModal() {
       setManualError('Please enter a valid 4-digit supervisor approval PIN.');
       return;
     }
-    handleCheckInOut('manual');
+    handleCheckInOut('manual',location??undefined);
   };
 
   if (!isCheckInModalOpen) return null;
@@ -187,6 +241,12 @@ export function AttendanceVerificationModal() {
             >
               <X className="w-5 h-5" />
             </button>
+          </div>
+
+          <div className={cn('mt-4 p-3 rounded-[12px] border text-xs',location?.status==='verified'?'bg-[#EBF6F0] border-[#C3E6D5]':location?'bg-[#FFF6D2] border-[#F8E29E]':'bg-[#FBFAFB] border-[#E4E1E5]')}>
+            <div className="flex items-center justify-between gap-3"><span className="font-bold flex items-center gap-1.5"><MapPin className="w-4 h-4"/>{isLocating?'Detecting location…':location?.status.replaceAll('_',' ')??'Waiting for location'}</span>{location?.distanceFromOfficeMeters!=null&&<span>{Math.round(location.distanceFromOfficeMeters)} m from office</span>}</div>
+            {location?.latitude!=null&&<div className="mt-2 h-14 rounded-[8px] bg-[#F3EEF2] relative overflow-hidden flex items-center justify-center"><div className="absolute inset-0 opacity-30" style={{backgroundImage:'linear-gradient(#A4879F 1px,transparent 1px),linear-gradient(90deg,#A4879F 1px,transparent 1px)',backgroundSize:'14px 14px'}}/><MapPin className="relative w-5 h-5 text-[#714B67]"/><span className="relative ml-2 font-mono text-[10px]">{location.latitude.toFixed(5)}, {location.longitude?.toFixed(5)} • ±{Math.round(location.accuracyMeters??0)}m</span></div>}
+            <p className="text-[10px] text-[#74717A] mt-1.5">Location is captured only for this attendance action; continuous tracking is disabled.</p>
           </div>
 
           {/* Verification Method Tabs */}

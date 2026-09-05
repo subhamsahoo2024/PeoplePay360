@@ -32,6 +32,7 @@ import { SalaryRulesView } from '@/components/payroll/SalaryRulesView';
 import { PayrollReadinessView } from '@/components/payroll/PayrollReadinessView';
 import { PayrollSimulatorView } from '@/components/payroll/PayrollSimulatorView';
 import { PayrollReportsView } from '@/components/payroll/PayrollReportsView';
+import { OvertimePolicyView } from '@/components/payroll/OvertimePolicyView';
 
 // Admin & Security
 import { BiometricDevicesView } from '@/components/admin/BiometricDevicesView';
@@ -101,6 +102,8 @@ function MainContent() {
         return <SalaryStructuresView />;
       case 'salary_rules':
         return <SalaryRulesView />;
+      case 'overtime_policy':
+        return <OvertimePolicyView />;
       case 'readiness':
       case 'payroll_readiness':
         return <PayrollReadinessView />;

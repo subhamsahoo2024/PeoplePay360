@@ -308,6 +308,14 @@ export function MyLoansView() {
 
               {/* Repayment Schedule Table */}
               <div className="rounded-[18px] bg-white border border-[#E4E1E5] shadow-xs overflow-hidden">
+                <div className="p-4 border-b border-[#F4F3F5]"><h2 className="text-sm font-bold text-[#28262D]">Immutable Transaction History</h2><p className="text-[11px] text-[#74717A]">Every installment, lump sum and settlement remains auditable.</p></div>
+                {(selectedLoan.transactionHistory?.length??0)>0 ? <div className="divide-y divide-[#F4F3F5]">{selectedLoan.transactionHistory!.map(tx=><div key={tx.id} className="p-3 grid grid-cols-2 sm:grid-cols-5 gap-2 text-xs"><div><span className="block text-[10px] text-[#74717A]">Date</span>{tx.paidOn}</div><div><span className="block text-[10px] text-[#74717A]">Type</span>{tx.type.replaceAll('_',' ')}</div><div><span className="block text-[10px] text-[#74717A]">Principal / Interest</span>{formatINR(tx.principalComponent)} / {formatINR(tx.interestComponent)}</div><div><span className="block text-[10px] text-[#74717A]">Amount</span><strong>{formatINR(tx.amount)}</strong></div><div><span className="block text-[10px] text-[#74717A]">Reference</span><span className="font-mono">{tx.reference}</span></div></div>)}</div>:<p className="p-4 text-xs text-[#74717A]">No repayment transactions recorded yet.</p>}
+              </div>
+
+              {selectedLoan.status==='closed'&&<div className="p-4 rounded-[14px] bg-[#EBF6F0] border border-[#C3E6D5] text-xs text-[#285C46]"><strong>Loan Closed</strong><span className="block mt-1">Settled on {selectedLoan.closedAt} • Reference {selectedLoan.closureReference}</span></div>}
+
+              {/* Repayment Schedule Table */}
+              <div className="rounded-[18px] bg-white border border-[#E4E1E5] shadow-xs overflow-hidden">
                 <div className="p-4 border-b border-[#F4F3F5] flex items-center justify-between">
                   <div>
                     <h2 className="text-sm font-bold text-[#28262D]">Amortized Repayment Schedule</h2>

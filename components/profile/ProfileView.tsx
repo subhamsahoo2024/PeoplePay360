@@ -19,10 +19,10 @@ import {
 } from 'lucide-react';
 import { ProfileUpdateRequest } from '@/lib/types';
 import { StatusBadge } from '@/components/shared/StatusBadge';
-import { formatDate } from '@/lib/utils';
+import { formatDate, formatINR } from '@/lib/utils';
 
 export function ProfileView() {
-  const { currentEmployee, profileRequests, submitProfileUpdateRequest } = useApp();
+  const { currentEmployee, profileRequests, submitProfileUpdateRequest, leaveRequests, payslips } = useApp();
 
   const [editingField, setEditingField] = useState<ProfileUpdateRequest['field'] | null>(null);
   const [newValue, setNewValue] = useState('');
@@ -31,6 +31,10 @@ export function ProfileView() {
   const myPendingRequests = profileRequests.filter(
     (p) => p.employeeId === currentEmployee.id && p.status === 'pending'
   );
+  const unpaidLeave = leaveRequests.filter(r=>r.employeeId===currentEmployee.id&&!r.isPaid);
+  const unpaidUsed = unpaidLeave.filter(r=>r.status==='approved').reduce((s,r)=>s+r.unpaidDays,0);
+  const unpaidPending = unpaidLeave.filter(r=>r.status==='submitted').reduce((s,r)=>s+r.unpaidDays,0);
+  const actualLop = payslips.reduce((s,p)=>s+p.unpaidLeaveDeduction,0);
 
   const startEdit = (field: ProfileUpdateRequest['field'], currentVal: string) => {
     setEditingField(field);
@@ -57,7 +61,7 @@ export function ProfileView() {
             <img
               src={currentEmployee.avatar}
               alt={currentEmployee.name}
-              className="w-24 h-24 rounded-full object-cover border-4 border-white shadow-md"
+              className="w-[72px] h-[72px] rounded-full object-cover border-4 border-white shadow-md"
             />
             <div className="mb-1">
               <div className="flex items-center gap-2 flex-wrap">
@@ -79,6 +83,12 @@ export function ProfileView() {
       </div>
 
       {/* Pending Update Requests Alert if any */}
+      <div className="grid grid-cols-3 gap-3 p-4 bg-white rounded-[14px] border border-[#E4E1E5] text-xs">
+        <div><span className="block text-[10px] uppercase text-[#74717A]">Unpaid leave used</span><strong>{unpaidUsed} days</strong></div>
+        <div><span className="block text-[10px] uppercase text-[#74717A]">Pending unpaid leave</span><strong>{unpaidPending} days</strong></div>
+        <div><span className="block text-[10px] uppercase text-[#74717A]">Processed loss of pay</span><strong className="text-[#C85A54]">{formatINR(actualLop)}</strong></div>
+      </div>
+
       {myPendingRequests.length > 0 && (
         <div className="p-4 bg-[#FFF6D2] rounded-[14px] border border-[#F8E29E] text-xs text-[#9A6B0A] flex items-start gap-3">
           <Clock className="w-4 h-4 shrink-0 mt-0.5" />

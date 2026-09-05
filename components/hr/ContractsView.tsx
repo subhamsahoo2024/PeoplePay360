@@ -55,7 +55,7 @@ export function ContractsView() {
 
         <div className="flex items-center gap-2 text-xs">
           <span className="font-semibold text-[#438A6B] bg-[#EBF6F0] px-3 py-1.5 rounded-[10px] border border-[#C3E6D5]">
-            {contractsList.filter((c) => c.status === 'active').length} Active Contracts
+            {contractsList.filter((c) => c.status === 'running').length} Running Contracts
           </span>
         </div>
       </div>
@@ -105,7 +105,7 @@ export function ContractsView() {
           </div>
 
           <div className="flex items-center gap-1 bg-[#F4F3F5] p-1 rounded-[10px]">
-            {['all', 'active', 'draft', 'expired'].map((s) => (
+            {['all', 'running', 'scheduled', 'draft', 'expired', 'terminated'].map((s) => (
               <button
                 key={s}
                 onClick={() => setStatusFilter(s)}

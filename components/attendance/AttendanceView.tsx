@@ -128,7 +128,7 @@ export function AttendanceView() {
       </div>
 
       {/* Working Schedule Banner */}
-      <div className="p-4 bg-[#FBFAFB] rounded-[14px] border border-[#E4E1E5] flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs">
+      <div className="p-4 bg-[#FBFAFB] rounded-[14px] border border-[#E4E1E5] grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
         <div className="flex items-center gap-3">
           <div className="w-9 h-9 rounded-[10px] bg-[#F4F3F5] text-[#714B67] flex items-center justify-center font-bold">
             <Calendar className="w-4 h-4" />
@@ -140,10 +140,9 @@ export function AttendanceView() {
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-3 text-[11px] font-mono text-[#74717A]">
-          <span>Check-In: <strong>{currentEmployee.todayCheckInTime || '--:--'}</strong></span>
-          <span>•</span>
-          <span>Check-Out: <strong>{currentEmployee.todayCheckOutTime || '--:--'}</strong></span>
+        <div className="grid grid-cols-2 gap-3 md:border-l md:border-[#E4E1E5] md:pl-4">
+          <div><span className="block text-[10px] uppercase text-[#74717A]">Check-in</span><strong className="font-mono">{currentEmployee.todayCheckInTime||'--:--'}</strong><span className="block text-[10px] mt-1">Face • Location verified</span></div>
+          <div className="text-right"><span className="block text-[10px] uppercase text-[#74717A]">Check-out</span><strong className="font-mono">{currentEmployee.todayCheckOutTime||'Pending'}</strong><span className="block text-[10px] mt-1">Worked: {isCheckedIn?'6h 48m':'8h 30m'}</span></div>
         </div>
       </div>
 

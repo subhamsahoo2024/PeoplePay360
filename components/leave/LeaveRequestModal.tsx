@@ -18,6 +18,7 @@ import {
 import { LEAVE_TYPES } from '@/lib/mock-data/leaves';
 import { formatINR } from '@/lib/utils';
 import { cn } from '@/lib/utils';
+import { calculateLeaveImpact } from '@/lib/domain/peoplepay-calculations';
 
 export function LeaveRequestModal() {
   const { isLeaveModalOpen, setIsLeaveModalOpen, currentEmployee, submitLeaveRequest } = useApp();
@@ -64,40 +65,26 @@ export function LeaveRequestModal() {
       calDays = 0.5;
     }
 
-    // Check balance
-    const availablePaidDays = selectedType.remainingDays ?? currentEmployee.paidLeaveBalance ?? selectedType.defaultDaysPerYear ?? 10;
-    let paidDaysUsed = 0;
-    let unpaidDays = 0;
-
-    if (selectedType.isPaid) {
-      if (workingDays <= availablePaidDays) {
-        paidDaysUsed = workingDays;
-        unpaidDays = 0;
-      } else {
-        paidDaysUsed = availablePaidDays;
-        unpaidDays = workingDays - availablePaidDays;
-      }
-    } else {
-      paidDaysUsed = 0;
-      unpaidDays = workingDays;
-    }
-
-    // Daily salary rate calculation (Monthly gross / 30)
     const monthlyGross = currentEmployee.monthlySalaryGross || 45000;
-    const dailyRate = Math.round(monthlyGross / 30);
-    const estimatedDeduction = Math.round(unpaidDays * dailyRate);
-    const estimatedNetSalary = Math.max(0, monthlyGross - 4250 - estimatedDeduction);
+    const leaveImpact = calculateLeaveImpact({
+      requestedWorkingDays: workingDays,
+      isPaidLeave: selectedType.isPaid,
+      availablePaidDays: selectedType.remainingDays ?? currentEmployee.paidLeaveBalance,
+      monthlySalaryBasis: monthlyGross,
+      payableWorkingDays: 30,
+    });
+    const estimatedNetSalary = Math.max(0, monthlyGross - 4250 - leaveImpact.estimatedLossOfPay);
 
     return {
       calDays,
       weekends,
       holidays,
       workingDays,
-      paidDaysUsed,
-      unpaidDays,
-      estimatedDeduction,
+      paidDaysUsed: leaveImpact.paidDays,
+      unpaidDays: leaveImpact.unpaidDays,
+      estimatedDeduction: leaveImpact.estimatedLossOfPay,
       estimatedNetSalary,
-      availablePaidDays,
+      availablePaidDays: leaveImpact.availablePaidDays,
     };
   }, [startDate, endDate, isHalfDay, selectedType, currentEmployee]);
 
@@ -181,11 +168,8 @@ export function LeaveRequestModal() {
                     >
                       <p className="text-xs font-bold text-[#28262D] truncate">{lt.code}</p>
                       <p className="text-[10px] text-[#74717A] truncate mt-0.5">{lt.name}</p>
-                      <div className="mt-1 flex items-center justify-between text-[10px]">
-                        <span className="font-semibold text-[#714B67] tabular-nums">
-                          {lt.remainingDays ?? lt.defaultDaysPerYear} left
-                        </span>
-                        <span className="text-[9px] text-[#A4879F]">/ {lt.totalDays ?? lt.defaultDaysPerYear}</span>
+                      <div className="mt-1 text-[10px] font-semibold text-[#714B67]">
+                        {lt.isPaid ? `${lt.remainingDays ?? lt.defaultDaysPerYear} paid days left` : 'Unlimited • Loss of Pay'}
                       </div>
                     </button>
                   );
@@ -470,9 +454,9 @@ export function LeaveRequestModal() {
                 <div className="mt-3 p-2.5 bg-[#FDF1F0] rounded-[10px] border border-[#F6CBC8] text-[11px] text-[#C85A54] flex items-start gap-2">
                   <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
                   <div>
-                    <p className="font-semibold">Paid Balance Exceeded</p>
+                    <p className="font-semibold">{selectedType.isPaid ? 'Paid Balance Exceeded' : 'Unpaid Leave Estimate'}</p>
                     <p>
-                      You only have {impact.availablePaidDays} paid day(s) left in this category. The remaining{' '}
+                      {selectedType.isPaid && <>You have {impact.availablePaidDays} paid day(s) left in this category. The remaining </>}
                       {impact.unpaidDays} day(s) will be treated as Loss of Pay (LOP), reducing your net monthly pay
                       by {formatINR(impact.estimatedDeduction)}.
                     </p>

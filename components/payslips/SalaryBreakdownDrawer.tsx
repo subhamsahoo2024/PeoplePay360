@@ -21,6 +21,7 @@ import { formatINR, formatDate } from '@/lib/utils';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { StatutoryContributionModal } from '@/components/payroll/StatutoryContributionModal';
 import { Lock } from 'lucide-react';
+import { buildPayslipPdf } from '@/lib/payslips/payslip-pdf';
 
 export function SalaryBreakdownDrawer() {
   const {
@@ -37,9 +38,9 @@ export function SalaryBreakdownDrawer() {
 
   const ps = selectedPayslip;
 
-  // Print function
-  const handlePrint = () => {
-    window.print();
+  const handleDownload = async () => {
+    const doc=await buildPayslipPdf(ps,currentEmployee);
+    doc.save(`${ps.employeeCode}-${ps.payrollPeriod.replaceAll(' ','-')}.pdf`);
   };
 
   const payslipNumber = ps.payslipNumber || `PS-2026-${ps.id.slice(-4).toUpperCase()}`;
@@ -82,23 +83,23 @@ export function SalaryBreakdownDrawer() {
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 overflow-hidden">
+      <div className="fixed inset-0 z-50 overflow-hidden flex items-center justify-center p-4 sm:p-6">
         {/* Backdrop */}
         <div
           onClick={() => setIsSalaryDrawerOpen(false)}
           className="absolute inset-0 bg-black/40 backdrop-blur-xs transition-opacity"
         />
 
-        <div className="fixed inset-y-0 right-0 max-w-full flex pl-10">
+        <div className="relative w-full flex justify-center max-h-[calc(100vh-48px)]">
           <motion.div
             initial={{ x: '100%' }}
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ duration: 0.25, ease: 'easeOut' }}
-            className="w-screen max-w-2xl bg-white border-l border-[#E4E1E5] shadow-2xl flex flex-col overflow-y-auto"
+            className="w-[min(900px,calc(100vw-48px))] max-h-[calc(100vh-48px)] bg-white rounded-[18px] border border-[#E4E1E5] shadow-2xl flex flex-col overflow-hidden"
           >
             {/* Drawer Header */}
-            <div className="p-6 border-b border-[#F4F3F5] bg-[#FBFAFB] flex items-center justify-between sticky top-0 z-10">
+            <div className="p-4 border-b border-[#F4F3F5] bg-[#FBFAFB] flex items-center justify-between shrink-0 z-10">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-[12px] bg-[#714B67] text-white flex items-center justify-center font-bold shadow-xs">
                   <FileSpreadsheet className="w-5 h-5" />
@@ -118,7 +119,7 @@ export function SalaryBreakdownDrawer() {
 
               <div className="flex items-center gap-2">
                 <button
-                  onClick={handlePrint}
+                  onClick={() => window.print()}
                   title="Print or Save PDF"
                   className="p-2 rounded-[10px] text-[#74717A] hover:bg-[#F4F3F5] hover:text-[#28262D] transition-colors border border-[#E4E1E5]"
                 >
@@ -134,7 +135,7 @@ export function SalaryBreakdownDrawer() {
             </div>
 
             {/* Content Container */}
-            <div className="p-6 space-y-6 flex-1 text-xs">
+            <div className="p-4 sm:p-5 space-y-4 flex-1 text-xs overflow-y-auto overflow-x-hidden min-h-0">
               {/* Employee & Organization Header */}
               <div className="p-4 rounded-[14px] bg-[#FBFAFB] border border-[#E4E1E5] grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <div>
@@ -320,7 +321,7 @@ export function SalaryBreakdownDrawer() {
                   </button>
 
                   <button
-                    onClick={handlePrint}
+                    onClick={handleDownload}
                     className="px-3.5 py-2 rounded-[10px] bg-[#F4C430] hover:bg-[#E5B520] text-[#4D3348] text-xs font-bold transition-colors flex items-center gap-1.5 shadow-xs"
                   >
                     <Download className="w-3.5 h-3.5" />
@@ -338,6 +339,10 @@ export function SalaryBreakdownDrawer() {
                   EPF & MP Act 1952, and Income Tax Act 1961. No physical signature is required.
                 </div>
               </div>
+            </div>
+            <div className="shrink-0 p-3 border-t border-[#E4E1E5] bg-white flex items-center justify-between gap-3">
+              <p className="text-[10px] text-[#74717A]">Private document • employee-authorized download</p>
+              <button onClick={handleDownload} className="px-4 py-2 rounded-[10px] bg-[#714B67] text-white text-xs font-bold flex items-center gap-1.5"><Download className="w-3.5 h-3.5"/>Download corporate PDF</button>
             </div>
           </motion.div>
         </div>

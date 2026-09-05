@@ -13,6 +13,7 @@ import {
   AlertCircle,
   FileText,
   User,
+  ChevronDown,
 } from 'lucide-react';
 import { LEAVE_TYPES } from '@/lib/mock-data/leaves';
 import { StatusBadge } from '@/components/shared/StatusBadge';
@@ -26,6 +27,7 @@ export function LeaveView() {
   const { currentEmployee, leaveRequests, setIsLeaveModalOpen } = useApp();
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
+  const [expandedRequest, setExpandedRequest] = useState<string | null>(null);
 
   // Medical proof state
   const [medicalProofs, setMedicalProofs] = useState<MedicalProof[]>([]);
@@ -53,6 +55,10 @@ export function LeaveView() {
       r.reason.toLowerCase().includes(searchTerm.toLowerCase());
     return isMine && matchesStatus && matchesSearch;
   });
+  const unpaidRequests = leaveRequests.filter(r => r.employeeId === currentEmployee.id && !r.isPaid);
+  const approvedUnpaidDays = unpaidRequests.filter(r => r.status === 'approved').reduce((sum,r)=>sum+r.unpaidDays,0);
+  const pendingUnpaidDays = unpaidRequests.filter(r => r.status === 'submitted').reduce((sum,r)=>sum+r.unpaidDays,0);
+  const actualLossOfPay = leaveRequests.filter(r=>r.employeeId===currentEmployee.id&&r.status==='approved').reduce((sum,r)=>sum+r.estimatedDeduction,0);
 
   return (
     <div className="space-y-6">
@@ -146,15 +152,17 @@ export function LeaveView() {
                   </span>
                 </div>
 
-                <div className="mt-4 flex items-baseline gap-2">
-                  <span className="text-2xl font-bold text-[#28262D] tabular-nums">
-                    {remaining}
-                  </span>
+                {lt.isPaid ? <div className="mt-4 flex items-baseline gap-2">
+                  <span className="text-2xl font-bold text-[#28262D] tabular-nums">{remaining}</span>
                   <span className="text-xs text-[#74717A]">/ {total} Days Available</span>
-                </div>
+                </div> : <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
+                  <div><span className="block text-[10px] text-[#74717A]">Used this year</span><strong>{approvedUnpaidDays} days</strong></div>
+                  <div><span className="block text-[10px] text-[#74717A]">Pending</span><strong>{pendingUnpaidDays} days</strong></div>
+                  <div className="col-span-2"><span className="block text-[10px] text-[#74717A]">Actual loss of pay</span><strong className="text-[#C85A54]">{formatINR(actualLossOfPay)}</strong></div>
+                </div>}
               </div>
 
-              <div className="mt-4">
+              {lt.isPaid && <div className="mt-4">
                 <div className="w-full bg-[#F4F3F5] h-2 rounded-full overflow-hidden">
                   <div
                     className={cn(
@@ -168,7 +176,7 @@ export function LeaveView() {
                   <span>Used: {Math.max(0, total - remaining)}d</span>
                   <span>{percent}% Remaining</span>
                 </div>
-              </div>
+              </div>}
             </div>
           );
         })}
@@ -182,7 +190,7 @@ export function LeaveView() {
 
           <div className="flex items-center gap-2 flex-wrap">
             <div className="flex items-center gap-1 bg-[#F4F3F5] p-1 rounded-[10px] text-xs">
-              {['all', 'submitted', 'approved', 'refused'].map((status) => (
+              {['all', 'submitted', 'approved', 'rejected'].map((status) => (
                 <button
                   key={status}
                   onClick={() => setStatusFilter(status)}
@@ -193,7 +201,7 @@ export function LeaveView() {
                       : 'text-[#74717A] hover:text-[#28262D]'
                   )}
                 >
-                  {status}
+                  {status === 'rejected' ? 'Refused' : status}
                 </button>
               ))}
             </div>
@@ -234,7 +242,8 @@ export function LeaveView() {
                 </tr>
               ) : (
                 myRequests.map((req) => (
-                  <tr key={req.id} className="hover:bg-[#FBFAFB] transition-colors">
+                  <React.Fragment key={req.id}>
+                  <tr className="hover:bg-[#FBFAFB] transition-colors">
                     <td className="py-3 px-4">
                       <div className="font-semibold text-[#28262D]">{req.leaveTypeName}</div>
                       <div className="text-[11px] text-[#A4879F]">Applied on {formatDate(req.appliedDate)}</div>
@@ -270,9 +279,14 @@ export function LeaveView() {
                       </div>
                     </td>
                     <td className="py-3 px-4 text-right">
-                      <StatusBadge status={req.status} size="sm" />
+                      <div className="inline-flex items-center gap-1">
+                        <StatusBadge status={req.status} size="sm" />
+                        {req.status === 'rejected' && <button aria-label="Show rejection reason" onClick={()=>setExpandedRequest(expandedRequest===req.id?null:req.id)} className="p-1 text-[#C85A54]"><ChevronDown className={cn('w-4 h-4 transition-transform',expandedRequest===req.id&&'rotate-180')}/></button>}
+                      </div>
                     </td>
                   </tr>
+                  {req.status === 'rejected' && expandedRequest === req.id && <tr className="bg-[#FDF1F0]"><td colSpan={7} className="px-4 py-3 text-[#8E3531]"><strong>Rejection reason:</strong> {req.rejectionReason}<span className="block mt-1 text-[10px] text-[#74717A]">Rejected by {req.rejectedBy ?? req.approverName}{req.rejectedAt ? ` on ${formatDate(req.rejectedAt)}` : ''}</span></td></tr>}
+                  </React.Fragment>
                 ))
               )}
             </tbody>

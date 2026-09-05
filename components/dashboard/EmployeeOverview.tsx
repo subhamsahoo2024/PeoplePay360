@@ -19,7 +19,6 @@ import {
 import { KPICard } from '@/components/shared/KPICard';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { formatINR, formatDate, cn } from '@/lib/utils';
-import { LEAVE_TYPES } from '@/lib/mock-data/leaves';
 import { SemanticIconTile } from '@/components/brand/SemanticIconTile';
 
 export function EmployeeOverview() {
@@ -40,6 +39,8 @@ export function EmployeeOverview() {
   const pendingLeaves = leaveRequests.filter(
     (r) => r.employeeId === currentEmployee.id && r.status === 'submitted'
   );
+  const approvedUnpaid = leaveRequests.filter(r=>r.employeeId===currentEmployee.id&&!r.isPaid&&r.status==='approved').reduce((s,r)=>s+r.unpaidDays,0);
+  const pendingUnpaid = leaveRequests.filter(r=>r.employeeId===currentEmployee.id&&!r.isPaid&&r.status==='submitted').reduce((s,r)=>s+r.unpaidDays,0);
 
   return (
     <div className="space-y-6">
@@ -126,9 +127,9 @@ export function EmployeeOverview() {
         />
 
         <KPICard
-          title="Pending Requests"
-          value={pendingLeaves.length > 0 ? `${pendingLeaves.length} In Review` : '0 Pending'}
-          subtitle="Manager approval workflow active"
+          title="Unpaid Leave This Year"
+          value={`${approvedUnpaid} Days Used`}
+          subtitle={`${pendingUnpaid} pending • No balance limit`}
           icon={<FileCheck className="w-5 h-5 text-[#9A6B0A]" />}
           iconVariant="warning"
           actionText="Track Status"

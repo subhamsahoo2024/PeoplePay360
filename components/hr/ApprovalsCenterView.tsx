@@ -31,6 +31,24 @@ export function ApprovalsCenterView() {
 
   type Tab = 'leaves' | 'profiles' | 'corrections';
   const [activeTab, setActiveTab] = useState<Tab>('leaves');
+  const [processingId, setProcessingId] = useState<string | null>(null);
+  const [rejectingId, setRejectingId] = useState<string | null>(null);
+  const [rejectionReason, setRejectionReason] = useState('');
+
+  const approveOne = async (id:string) => {
+    if (processingId) return;
+    setProcessingId(id);
+    try { await Promise.resolve(approveLeaveRequest(id)); } finally { setProcessingId(null); }
+  };
+
+  const rejectOne = async () => {
+    if (!rejectingId || !rejectionReason.trim()) return;
+    setProcessingId(rejectingId);
+    try {
+      await Promise.resolve(refuseLeaveRequest(rejectingId,rejectionReason.trim()));
+      setRejectingId(null); setRejectionReason('');
+    } finally { setProcessingId(null); }
+  };
 
   const pendingLeaves = leaveRequests.filter((l) => l.status === 'submitted');
   const pendingProfiles = profileRequests.filter((p) => p.status === 'pending');
@@ -154,18 +172,20 @@ export function ApprovalsCenterView() {
                 {lr.status === 'submitted' ? (
                   <div className="flex items-center gap-2 shrink-0">
                     <button
-                      onClick={() => refuseLeaveRequest(lr.id, 'Manager review deemed shift coverage critical.')}
+                      onClick={() => setRejectingId(lr.id)}
+                      disabled={processingId === lr.id}
                       className="px-3.5 py-2 rounded-[10px] border border-[#F6CBC8] text-[#C85A54] hover:bg-[#FDF1F0] font-semibold transition-colors flex items-center gap-1.5"
                     >
                       <X className="w-4 h-4" />
-                      <span>Refuse</span>
+                      <span>Reject</span>
                     </button>
                     <button
-                      onClick={() => approveLeaveRequest(lr.id)}
+                      onClick={() => approveOne(lr.id)}
+                      disabled={processingId === lr.id}
                       className="px-4 py-2 rounded-[10px] bg-[#438A6B] hover:bg-[#38765A] text-white font-bold transition-colors flex items-center gap-1.5 shadow-xs"
                     >
                       <Check className="w-4 h-4" />
-                      <span>Approve</span>
+                      <span>{processingId === lr.id ? 'Approving…' : 'Approve'}</span>
                     </button>
                   </div>
                 ) : (
@@ -178,6 +198,19 @@ export function ApprovalsCenterView() {
           )}
         </div>
       )}
+
+      {rejectingId && <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-labelledby="reject-title">
+        <div className="w-full max-w-md rounded-[16px] bg-white border border-[#E4E1E5] shadow-2xl p-5">
+          <h3 id="reject-title" className="text-sm font-bold text-[#28262D]">Reject leave request</h3>
+          <p className="text-xs text-[#74717A] mt-1">The employee will see this reason in leave history.</p>
+          <label className="block text-xs font-semibold mt-4 mb-1.5" htmlFor="leave-rejection-reason">Rejection reason *</label>
+          <textarea id="leave-rejection-reason" autoFocus rows={4} value={rejectionReason} onChange={e=>setRejectionReason(e.target.value)} className="w-full rounded-[10px] border border-[#E4E1E5] p-3 text-xs outline-none focus:border-[#714B67]" placeholder="Explain why this request cannot be approved…"/>
+          <div className="flex justify-end gap-2 mt-4">
+            <button onClick={()=>{setRejectingId(null);setRejectionReason('')}} className="px-3 py-2 text-xs rounded-[9px] hover:bg-[#F4F3F5]">Cancel</button>
+            <button disabled={!rejectionReason.trim()||processingId===rejectingId} onClick={rejectOne} className="px-4 py-2 text-xs font-bold rounded-[9px] bg-[#C85A54] text-white disabled:opacity-50">{processingId===rejectingId?'Rejecting…':'Reject request'}</button>
+          </div>
+        </div>
+      </div>}
 
       {/* Tab 2: Profile Update Requests */}
       {activeTab === 'profiles' && (

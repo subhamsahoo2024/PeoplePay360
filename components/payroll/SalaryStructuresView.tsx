@@ -31,6 +31,7 @@ export function SalaryStructuresView() {
   const [selectedStructure, setSelectedStructure] = useState<SalaryStructure | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [formData, setFormData] = useState<Partial<SalaryStructure>>({});
+  const [validationErrors,setValidationErrors]=useState<string[]>([]);
 
   const handleEdit = (str: SalaryStructure) => {
     if (isReadOnly) return;
@@ -52,13 +53,22 @@ export function SalaryStructuresView() {
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name) return;
+    const selected=SALARY_RULES.filter(rule=>formData.ruleIds?.includes(rule.id));
+    const errors:string[]=[];
+    if(!formData.name?.trim())errors.push('Structure name is required.');
+    if(selected.length===0)errors.push('Select at least one salary rule.');
+    if(selected.filter(rule=>rule.category==='basic').length!==1)errors.push('Select exactly one primary/basic earning rule.');
+    if(new Set(selected.map(rule=>rule.code)).size!==selected.length)errors.push('Salary rule codes must be unique.');
+    const selectedCodes=new Set(selected.map(rule=>rule.code));
+    const hasMissingDependency=selected.some(rule=>rule.baseRuleCode&&!selectedCodes.has(rule.baseRuleCode));
+    if(hasMissingDependency)errors.push('Every percentage dependency must be included in this version.');
+    if(errors.length){setValidationErrors(errors);return}setValidationErrors([]);
 
     if (formData.id) {
       updateSalaryStructure(formData.id, formData);
     } else {
       addSalaryStructure({
-        name: formData.name,
+        name: formData.name!,
         code: formData.code || 'STR-CUSTOM',
         description: formData.description || '',
         currency: 'INR',
@@ -194,6 +204,7 @@ export function SalaryStructuresView() {
               </div>
 
               <form onSubmit={handleSave} className="mt-4 space-y-3.5 text-xs">
+                {validationErrors.length>0&&<div className="p-3 rounded-[10px] bg-[#FDF1F0] border border-[#F6CBC8] text-[#C85A54] space-y-1">{validationErrors.map(error=><p key={error}>• {error}</p>)}</div>}
                 <div>
                   <label className="block text-xs font-semibold text-[#28262D] mb-1">
                     Structure Name *

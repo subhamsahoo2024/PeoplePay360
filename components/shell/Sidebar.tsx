@@ -29,6 +29,7 @@ import {
   Building,
   FileCheck,
   Mail,
+  Clock,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SidebarBrand } from '@/components/brand/PeoplePayLogo';
@@ -104,6 +105,7 @@ export function Sidebar() {
     { id: 'company_loans', label: 'Loan Deductions', icon: CreditCard },
     { id: 'salary_structures', label: 'Salary Structures', icon: Layers },
     { id: 'salary_rules', label: 'Salary Rules', icon: Sliders },
+    { id: 'overtime_policy', label: 'Overtime Policy', icon: Clock },
     ...(currentRole === 'hr_payroll_manager' || currentRole === 'admin'
       ? [
           { id: 'readiness', label: 'Readiness Score', icon: ShieldCheck },
