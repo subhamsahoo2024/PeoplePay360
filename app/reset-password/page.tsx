@@ -1,13 +1,17 @@
 'use client';
 
 import React from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { Eye, EyeOff, LockKeyhole, Loader2, CheckCircle2 } from 'lucide-react';
 import { PeoplePayLogo } from '@/components/brand/PeoplePayLogo';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { getLocalInvitation,logLocalFallback,updateLocalInvitation } from '@/lib/demo/local-fallback';
 
 export default function ResetPasswordPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const isInvitation = searchParams.get('invite') === '1';
+  const demoInvite=searchParams.get('demoInvite');
   const [password, setPassword] = React.useState('');
   const [confirm, setConfirm] = React.useState('');
   const [showPassword, setShowPassword] = React.useState(false);
@@ -21,11 +25,16 @@ export default function ResetPasswordPage() {
     if (password !== confirm) { setError('Passwords do not match.'); return; }
     if (password.length < 8) { setError('Password must be at least 8 characters.'); return; }
 
+    if(demoInvite){const invitation=getLocalInvitation(demoInvite);if(!invitation){setError('This presentation invitation is unavailable or was opened in another browser.');return}setSubmitting(true);updateLocalInvitation(demoInvite,{passwordCreatedAt:new Date().toISOString()});logLocalFallback('onboarding','local_password_created',{token:demoInvite});setDone(true);setSubmitting(false);setTimeout(()=>router.replace(`/onboarding?demoInvite=${encodeURIComponent(demoInvite)}`),900);return}
+
     const client = getSupabaseBrowserClient();
     if (!client) { setError('Supabase is not configured.'); return; }
     setSubmitting(true);
 
-    const { error: updateError } = await client.auth.updateUser({ password });
+    const { error: updateError } = await client.auth.updateUser({
+      password,
+      ...(isInvitation ? { data: { onboarding_password_set: true } } : {}),
+    });
     if (updateError) {
       setError(updateError.message);
       setSubmitting(false);
@@ -33,7 +42,8 @@ export default function ResetPasswordPage() {
     }
     setDone(true);
     setSubmitting(false);
-    setTimeout(() => router.replace('/'), 3000);
+    if (isInvitation) await client.auth.signOut({ scope: 'local' });
+    setTimeout(() => router.replace(isInvitation ? '/?onboarding=1' : '/'), 1800);
   };
 
   const inputClass = 'w-full rounded-[10px] border border-[#D9D5D8] bg-white py-3 pl-10 pr-3 text-sm text-[#28262D] outline-none transition focus:border-[#714B67] focus:ring-2 focus:ring-[#714B67]/15';
@@ -53,12 +63,12 @@ export default function ResetPasswordPage() {
           <div className="text-center py-4">
             <CheckCircle2 className="w-12 h-12 text-[#438A6B] mx-auto" />
             <h1 className="text-xl font-bold mt-4 text-[#28262D]">Password updated</h1>
-            <p className="text-sm text-[#74717A] mt-2">Redirecting you to sign in…</p>
+            <p className="text-sm text-[#74717A] mt-2">{isInvitation?'Redirecting you to sign in and complete your profile…':'Redirecting you to sign in…'}</p>
           </div>
         ) : (
           <>
-            <h1 className="text-2xl font-bold tracking-tight text-[#28262D]">Set a new password</h1>
-            <p className="mt-1 text-sm text-[#74717A]">Choose a strong password for your PeoplePay360 account.</p>
+            <h1 className="text-2xl font-bold tracking-tight text-[#28262D]">{isInvitation?'Create your password':'Set a new password'}</h1>
+            <p className="mt-1 text-sm text-[#74717A]">{isInvitation?'Create your password, then sign in to complete your employee profile.':'Choose a strong password for your PeoplePay360 account.'}</p>
 
             <form className="mt-6 space-y-4" onSubmit={submit}>
               <label className="block text-sm font-semibold text-[#3D3940]" htmlFor="new-password">

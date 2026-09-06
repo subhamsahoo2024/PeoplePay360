@@ -6,10 +6,17 @@ import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { useApp } from '@/lib/context/app-context';
 import { DEPARTMENTS,WORKING_SCHEDULES } from '@/lib/mock-data/departments-schedules';
 import { SALARY_STRUCTURES } from '@/lib/mock-data/payroll';
+import { createLocalInvitation } from '@/lib/demo/local-fallback';
 
 type Department = { id: string; name: string };
 type Position = { id: string; title: string; department_id: string | null };
 type NamedRecord = { id: string; name: string };
+type MailDraft = { to: string; subject: string; body: string };
+
+const gmailComposeUrl = ({to,subject,body}:MailDraft) => {
+  const query=new URLSearchParams({view:'cm',fs:'1',to,su:subject,body});
+  return `https://mail.google.com/mail/?${query.toString()}`;
+};
 
 export function CreateEmployeeAccountModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const {authenticated,companyId}=useApp();
@@ -23,6 +30,7 @@ export function CreateEmployeeAccountModal({ open, onClose }: { open: boolean; o
   const [busy, setBusy] = React.useState(false);
   const [error, setError] = React.useState('');
   const [sent, setSent] = React.useState(false);
+  const [mailDraft,setMailDraft]=React.useState<MailDraft|null>(null);
   const configurationError = authenticated&&(!getSupabaseBrowserClient()||!companyId)?'Your company session is unavailable. Sign in again.':'';
 
   React.useEffect(() => {
@@ -43,8 +51,11 @@ export function CreateEmployeeAccountModal({ open, onClose }: { open: boolean; o
 
   const create = async (event: React.FormEvent) => {
     event.preventDefault(); setBusy(true); setError('');
+    // Opening the tab during the submit event avoids browser popup blocking.
+    const gmailTab=window.open('about:blank','peoplepay360-gmail-compose');
+    if(gmailTab){gmailTab.document.title='Preparing PeoplePay360 invitation…';gmailTab.document.body.innerHTML='<p style="font:16px system-ui;padding:24px">Creating employee account and preparing Gmail…</p>'}
     try {
-      if(!authenticated){await new Promise(resolve=>window.setTimeout(resolve,450));setSent(true);return}
+      if(!authenticated){await new Promise(resolve=>window.setTimeout(resolve,450));const firstName=form.fullName.trim().split(/\s+/)[0]||'Employee';const invitation=createLocalInvitation({fullName:form.fullName.trim(),personalEmail:form.personalEmail.trim(),joiningDate:form.joiningDate,employmentCategory:form.employmentCategory});const appUrl=process.env.NEXT_PUBLIC_APP_URL||window.location.origin;const activationUrl=`${appUrl}/reset-password?invite=1&demoInvite=${encodeURIComponent(invitation.token)}`;const draft={to:form.personalEmail.trim(),subject:'Activate your PeoplePay360 employee account',body:`Hello ${firstName},\n\nYour PeoplePay360 employee account and contract are ready.\n\nCreate your password and complete your employee profile using this link:\n\n${activationUrl}\n\nRegards,\nPeoplePay360 HR`};setMailDraft(draft);if(gmailTab)gmailTab.location.replace(gmailComposeUrl(draft));else window.open(gmailComposeUrl(draft),'_blank','noopener,noreferrer');setSent(true);return}
       const client = getSupabaseBrowserClient();
       if (!client || !companyId) throw new Error('Supabase is not configured');
       const { data: { session } } = await client.auth.getSession();
@@ -56,8 +67,15 @@ export function CreateEmployeeAccountModal({ open, onClose }: { open: boolean; o
       });
       const body = await response.json();
       if (!response.ok) throw new Error(body.error?.message ?? 'Account creation failed');
+      const draft=body.mailDraft as MailDraft|undefined;
+      if(draft){
+        setMailDraft(draft);
+        if(gmailTab)gmailTab.location.replace(gmailComposeUrl(draft));
+        else window.open(gmailComposeUrl(draft),'_blank','noopener,noreferrer');
+      }else gmailTab?.close();
       setSent(true);
     } catch (caught) {
+      gmailTab?.close();
       setError(caught instanceof Error ? caught.message : 'Account creation failed');
     } finally { setBusy(false); }
   };
@@ -69,7 +87,7 @@ export function CreateEmployeeAccountModal({ open, onClose }: { open: boolean; o
         <div className="flex justify-between gap-4"><div><h3 className="font-bold">Create Employee Account</h3><p className="text-xs text-[#74717A]">Auth creation, approved role assignment and invitation are server protected.</p></div><button type="button" onClick={onClose} aria-label="Close employee account dialog"><X className="w-5 h-5" /></button></div>
         {(configurationError || error) && <p className="mt-3 p-2 bg-[#FDF1F0] text-[#C85A54] rounded text-xs">{error || configurationError}</p>}
         {sent ? (
-          <div className="py-10 text-center"><CheckCircle2 className="w-12 h-12 text-[#438A6B] mx-auto" /><h4 className="font-bold mt-3">{authenticated?'Invitation email sent successfully':'Demo employee scenario created'}</h4><p className="text-xs text-[#74717A] mt-1">{authenticated?'The employee, assigned contract and delivery result were recorded.':'Demo Mode does not write accounts or send external email.'}</p><button type="button" onClick={onClose} className="mt-4 px-4 py-2 bg-[#714B67] text-white rounded-[9px] text-xs font-bold">Back to employees</button></div>
+          <div className="py-10 text-center"><CheckCircle2 className="w-12 h-12 text-[#438A6B] mx-auto" /><h4 className="font-bold mt-3">Employee created and Gmail draft opened</h4><p className="text-xs text-[#74717A] mt-1">Recipient, subject and invitation details are prefilled. Review the Gmail draft and press Send.</p><div className="mt-4 flex justify-center gap-2">{mailDraft&&<button type="button" onClick={()=>window.open(gmailComposeUrl(mailDraft),'_blank','noopener,noreferrer')} className="px-4 py-2 border border-[#714B67] text-[#714B67] rounded-[9px] text-xs font-bold">Open Gmail again</button>}<button type="button" onClick={onClose} className="px-4 py-2 bg-[#714B67] text-white rounded-[9px] text-xs font-bold">Back to employees</button></div></div>
         ) : (
           <form onSubmit={create} className="mt-4 grid sm:grid-cols-2 gap-3 text-xs">
             <label>Full name *<input required className={input} value={form.fullName} onChange={(event) => setForm({ ...form, fullName: event.target.value })} /></label>

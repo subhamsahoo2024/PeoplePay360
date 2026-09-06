@@ -48,7 +48,16 @@ export const peoplePayQueries = {
   contractHistory: async (client:PeoplePayClient, employeeId:string) => unwrap(await client.from('contracts').select('*').eq('employee_id',employeeId).order('start_date',{ascending:false})),
   payrollContractEligibility: async(client:PeoplePayClient,companyId:string,periodStart:string,periodEnd:string)=>unwrap(await client.rpc('payroll_contract_eligibility',{p_company_id:companyId,p_period_start:periodStart,p_period_end:periodEnd})),
   updateCompanyAssignmentOverrides: async (client:PeoplePayClient, assignmentId:string, overrides:Json) => unwrap(await client.from('company_salary_structure_assignments').update({overrides}).eq('id',assignmentId).select().single()),
-  recordAttendanceWithLocation: async (client:PeoplePayClient,input:{companyId:string;eventType:'check_in'|'check_out';method:'face'|'fingerprint'|'manual';latitude?:number;longitude?:number;accuracyMeters?:number;permissionDenied?:boolean;deviceId?:string})=>unwrap(await client.rpc('record_attendance_with_location',{p_company_id:input.companyId,p_event_type:input.eventType,p_method:input.method,p_latitude:input.latitude,p_longitude:input.longitude,p_accuracy_meters:input.accuracyMeters,p_permission_denied:input.permissionDenied,p_device_id:input.deviceId})),
+  recordAttendanceWithLocation: async (client:PeoplePayClient,input:{companyId:string;eventType:'check_in'|'check_out';method:'face'|'fingerprint'|'manual';latitude?:number;longitude?:number;accuracyMeters?:number;permissionDenied?:boolean;deviceId?:string})=>{
+    const enhanced=await client.rpc('record_attendance_with_location',{p_company_id:input.companyId,p_event_type:input.eventType,p_method:input.method,p_latitude:input.latitude,p_longitude:input.longitude,p_accuracy_meters:input.accuracyMeters,p_permission_denied:input.permissionDenied,p_device_id:input.deviceId});
+    if(!enhanced.error)return enhanced.data;
+    if(enhanced.error.code!=='PGRST202'&&!enhanced.error.message.includes('Could not find the function'))throw enhanced.error;
+    if(input.method==='manual')throw new Error('Manual attendance is not supported');
+    const legacy=input.eventType==='check_in'
+      ? await client.rpc('check_in',{p_company_id:input.companyId,p_method:input.method,p_device_id:input.deviceId??null})
+      : await client.rpc('check_out',{p_company_id:input.companyId,p_method:input.method,p_device_id:input.deviceId??null});
+    return unwrap(legacy);
+  },
   previewLeaveImpact: async(client:PeoplePayClient,input:{companyId:string;leaveTypeId:string;startDate:string;endDate:string})=>unwrap(await client.rpc('preview_leave_impact_v2',{p_company_id:input.companyId,p_leave_type_id:input.leaveTypeId,p_start_date:input.startDate,p_end_date:input.endDate})),
   calculateOvertimeEntry: async(client:PeoplePayClient,attendanceId:string)=>unwrap(await client.rpc('calculate_overtime_entry',{p_attendance_id:attendanceId})),
   prepareBankExport: async(client:PeoplePayClient,input:{payRunId:string;companyBankAccountId:string;templateId:string;batchReference:string;paymentDate:string})=>unwrap(await client.rpc('prepare_payroll_bank_export',{p_pay_run_id:input.payRunId,p_company_bank_account_id:input.companyBankAccountId,p_template_id:input.templateId,p_batch_reference:input.batchReference,p_payment_date:input.paymentDate})),

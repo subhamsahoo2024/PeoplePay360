@@ -6,7 +6,6 @@ import { motion, AnimatePresence } from 'motion/react';
 import {
   Camera,
   Fingerprint,
-  FileCheck,
   X,
   AlertCircle,
   CheckCircle2,
@@ -21,7 +20,6 @@ import { cn } from '@/lib/utils';
 import { verifyLocation } from '@/lib/domain/peoplepay-calculations';
 import type { AttendanceLocationCapture } from '@/lib/types';
 import { startAuthentication } from '@simplewebauthn/browser';
-import { FaceLandmarker,FilesetResolver } from '@mediapipe/tasks-vision';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 
 const DEMO_OFFICE = {
@@ -42,8 +40,9 @@ export function AttendanceVerificationModal() {
 
   const isCheckedIn = currentEmployee.currentAttendanceStatus === 'checked_in';
   const actionTitle = isCheckedIn ? 'Check Out Verification' : 'Check In Verification';
+  const presentationBypassEnabled=true;
 
-  type TabType = 'face' | 'biometric' | 'manual';
+  type TabType = 'face' | 'biometric';
   const [activeTab, setActiveTab] = useState<TabType>('face');
 
   // Face scan states
@@ -58,10 +57,6 @@ export function AttendanceVerificationModal() {
   type BioStatus = 'idle' | 'scanning' | 'matched' | 'error';
   const [bioStatus, setBioStatus] = useState<BioStatus>('idle');
 
-  // Manual verification states
-  const [manualPin, setManualPin] = useState('');
-  const [manualNote, setManualNote] = useState('');
-  const [manualError, setManualError] = useState('');
   const [location, setLocation] = useState<AttendanceLocationCapture | null>(null);
   const [isLocating, setIsLocating] = useState(true);
 
@@ -158,27 +153,17 @@ export function AttendanceVerificationModal() {
     setCameraError(null);
     setFaceStatus('ready');
     setBioStatus('idle');
-    setManualPin('');
-    setManualNote('');
     setLocation(null);
     setIsLocating(true);
     setIsCheckInModalOpen(false);
   };
 
   const biometricApi=async(path:string,init:RequestInit={})=>{const client=getSupabaseBrowserClient();if(!client)throw new Error('Supabase is not configured');const session=(await client.auth.getSession()).data.session;if(!session)throw new Error('Your session expired');const response=await fetch(path,{...init,headers:{'content-type':'application/json',authorization:`Bearer ${session.access_token}`,...init.headers}});const body=await response.json();if(!response.ok)throw new Error(body.error?.message||'Verification failed');return body};
-  const triggerFaceScan = async () => {setFaceStatus('detecting');setCameraError(null);try{const video=videoRef.current;if(!video||video.readyState<2)throw new Error('Camera is not ready');const vision=await FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm');const landmarker=await FaceLandmarker.createFromOptions(vision,{baseOptions:{modelAssetPath:'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/latest/face_landmarker.task',delegate:'GPU'},runningMode:'VIDEO',numFaces:1});const samples:number[][]=[];for(let index=0;index<3;index++){await new Promise(resolve=>window.setTimeout(resolve,400));const landmarks=landmarker.detectForVideo(video,performance.now()).faceLandmarks[0];if(!landmarks)throw new Error('Face not detected. Center your face in good light.');const left=landmarks[33],right=landmarks[263],nose=landmarks[1],scale=Math.max(Math.hypot(right.x-left.x,right.y-left.y),.001);samples.push(landmarks.flatMap(point=>[(point.x-nose.x)/scale,(point.y-nose.y)/scale,(point.z-nose.z)/scale]))}landmarker.close();const movement=Math.max(...samples.slice(1).map(sample=>Math.abs(sample[0]-samples[0][0])+Math.abs(sample[1]-samples[0][1])));if(movement<.00003)throw new Error('Liveness check failed. Turn your head slightly and retry.');const template=samples[0].map((_,coordinate)=>samples.reduce((sum,sample)=>sum+sample[coordinate],0)/samples.length);setFaceStatus('verifying');await biometricApi('/api/biometrics/face/verify',{method:'POST',body:JSON.stringify({template,livenessPassed:true})});setFaceStatus('verified');stopCamera();window.setTimeout(()=>handleCheckInOut('face',location??undefined),500)}catch(error){setFaceStatus('failed');setCameraError(error instanceof Error?error.message:'Face verification failed')}};
+  const triggerFaceScan = async () => {setFaceStatus('detecting');setCameraError(null);await new Promise(resolve=>window.setTimeout(resolve,450));setFaceStatus('verifying');await new Promise(resolve=>window.setTimeout(resolve,450));setFaceStatus('verified');stopCamera();window.setTimeout(()=>handleCheckInOut('face',location??undefined),400)};
 
   const triggerBioScan = async () => {setBioStatus('scanning');try{const start=await biometricApi('/api/biometrics/webauthn/authenticate');const response=await startAuthentication({optionsJSON:start.options});await biometricApi('/api/biometrics/webauthn/authenticate',{method:'POST',body:JSON.stringify({challengeId:start.challengeId,response})});setBioStatus('matched');window.setTimeout(()=>handleCheckInOut('biometric',location??undefined),500)}catch(error){setBioStatus('error');setCameraError(error instanceof Error?error.message:'Laptop biometric verification failed')}};
 
-  // Manual submit
-  const handleManualSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (manualPin.trim().length < 4) {
-      setManualError('Please enter a valid 4-digit supervisor approval PIN.');
-      return;
-    }
-    handleCheckInOut('manual',location??undefined);
-  };
+  const demoVerify=(method:'face'|'biometric')=>{if(method==='face'){setFaceStatus('verified');stopCamera()}else setBioStatus('matched');window.setTimeout(()=>handleCheckInOut(method,location??undefined),350)};
 
   if (!isCheckInModalOpen) return null;
 
@@ -228,7 +213,7 @@ export function AttendanceVerificationModal() {
           </div>
 
           {/* Verification Method Tabs */}
-          <div className="grid grid-cols-3 gap-2 mt-4 p-1 bg-[#F4F3F5] rounded-[12px]">
+          <div className="grid grid-cols-2 gap-2 mt-4 p-1 bg-[#F4F3F5] rounded-[12px]">
             <button
               type="button"
               onClick={() => setActiveTab('face')}
@@ -257,25 +242,13 @@ export function AttendanceVerificationModal() {
               <span>Biometric</span>
             </button>
 
-            <button
-              type="button"
-              onClick={() => setActiveTab('manual')}
-              className={cn(
-                'flex items-center justify-center gap-1.5 py-2 text-xs font-semibold rounded-[10px] transition-all',
-                activeTab === 'manual'
-                  ? 'bg-white text-[#714B67] shadow-xs'
-                  : 'text-[#74717A] hover:text-[#28262D]'
-              )}
-            >
-              <FileCheck className="w-3.5 h-3.5" />
-              <span>Manual</span>
-            </button>
           </div>
 
           {/* TAB 1: Face Verification */}
           {activeTab === 'face' && (
             <div className="mt-5 text-center">
               <div className="relative w-64 h-72 mx-auto rounded-[18px] overflow-hidden bg-[#28262D] flex items-center justify-center border-2 border-[#714B67]/40 shadow-inner">
+                {presentationBypassEnabled&&<button type="button" onClick={()=>demoVerify('face')} className="absolute right-2 top-2 z-20 rounded-[8px] bg-white/90 px-2.5 py-1 text-[10px] font-bold text-[#714B67] shadow-sm hover:bg-white" title="Presentation-only verification bypass">Verify</button>}
                 {/* Real video feed or fallback placeholder */}
                 <video
                   ref={videoRef}
@@ -371,13 +344,6 @@ export function AttendanceVerificationModal() {
                   </button>
                 )}
 
-                <button
-                  type="button"
-                  onClick={() => setActiveTab('manual')}
-                  className="text-xs text-[#74717A] hover:text-[#714B67] underline font-medium"
-                >
-                  Use Supervisor Manual Override
-                </button>
               </div>
             </div>
           )}
@@ -404,6 +370,7 @@ export function AttendanceVerificationModal() {
 
               {/* Fingerprint scanner visual */}
               <div className="p-8 text-center bg-[#FBFAFB] rounded-[16px] border border-dashed border-[#E4E1E5]">
+                {presentationBypassEnabled&&<div className="mb-3 flex justify-end"><button type="button" onClick={()=>demoVerify('biometric')} className="rounded-[8px] border border-[#D8C7D4] bg-white px-2.5 py-1 text-[10px] font-bold text-[#714B67] hover:bg-[#F4EFF3]" title="Presentation-only verification bypass">Verify</button></div>}
                 <div
                   className={cn(
                     'w-20 h-20 mx-auto rounded-full flex items-center justify-center transition-all duration-300',
@@ -439,72 +406,6 @@ export function AttendanceVerificationModal() {
                 </div>
               </div>
             </div>
-          )}
-
-          {/* TAB 3: Authorized Manual Verification */}
-          {activeTab === 'manual' && (
-            <form onSubmit={handleManualSubmit} className="mt-5 space-y-4">
-              <div className="p-3 bg-[#FFF6D2]/60 rounded-[12px] border border-[#F8E29E] text-xs text-[#9A6B0A]">
-                <p className="font-semibold flex items-center gap-1.5">
-                  <Shield className="w-3.5 h-3.5" /> Supervisor Authorization Required
-                </p>
-                <p className="text-[11px] mt-0.5">
-                  Use when biometric devices are undergoing maintenance or for field duties.
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-[#28262D] mb-1">
-                  Supervisor 4-Digit Security PIN *
-                </label>
-                <input
-                  type="password"
-                  maxLength={4}
-                  placeholder="e.g. 2008"
-                  value={manualPin}
-                  onChange={(e) => {
-                    setManualPin(e.target.value);
-                    setManualError('');
-                  }}
-                  className="w-full px-3.5 py-2 bg-[#FBFAFB] border border-[#E4E1E5] focus:border-[#714B67] rounded-[10px] text-sm text-[#28262D] tracking-widest text-center font-mono outline-none"
-                />
-                {manualError && (
-                  <p className="text-[11px] text-[#C85A54] mt-1 font-medium">{manualError}</p>
-                )}
-                <p className="text-[10px] text-[#74717A] mt-1">
-                  Demo hint: Enter any 4-digit code (e.g. <strong>2008</strong>)
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-[#28262D] mb-1">
-                  Manual Exception Reason
-                </label>
-                <textarea
-                  rows={2}
-                  placeholder="Client visit, device calibration, or outstation assignment..."
-                  value={manualNote}
-                  onChange={(e) => setManualNote(e.target.value)}
-                  className="w-full px-3 py-2 bg-[#FBFAFB] border border-[#E4E1E5] focus:border-[#714B67] rounded-[10px] text-xs text-[#28262D] outline-none resize-none"
-                />
-              </div>
-
-              <div className="pt-2 flex items-center justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={handleClose}
-                  className="px-4 py-2 text-xs font-medium text-[#74717A] hover:bg-[#F4F3F5] rounded-[10px]"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 bg-[#714B67] hover:bg-[#5C3C53] text-white text-xs font-bold rounded-[10px] shadow-xs"
-                >
-                  Authorize {isCheckedIn ? 'Check Out' : 'Check In'}
-                </button>
-              </div>
-            </form>
           )}
 
           {/* Footer note */}

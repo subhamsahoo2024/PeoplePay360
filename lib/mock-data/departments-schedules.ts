@@ -24,7 +24,7 @@ export const DEPARTMENTS: Department[] = [
     name: 'Finance & Payroll',
     code: 'FIN',
     managerId: 'emp-4',
-    managerName: 'Ananya Deshmukh',
+    managerName: 'Rajesh Kulkarni',
     totalHeadcount: 16,
     monthlyPayrollBudget: 1450000,
   },

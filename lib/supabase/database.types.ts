@@ -132,6 +132,8 @@ export interface Database {
       create_work_schedule: {Args:{p_company_id:string;p_name:string;p_timezone:string;p_effective_from:string;p_effective_to?:string|null;p_assignment_type:'company'|'department'|'employee';p_assignment_id?:string|null;p_is_company_default:boolean;p_days:Json};Returns:string};
       assign_employee_contract: {Args:{p_contract_id:string};Returns:ContractRow};
       payroll_contract_eligibility: {Args:{p_company_id:string;p_period_start:string;p_period_end:string};Returns:{employee_id:string;contract_id:string|null;is_eligible:boolean;eligible_from:string|null;eligible_to:string|null;exclusion_reason:string|null}[]};
+      check_in: {Args:{p_company_id:string;p_method:string;p_device_id?:string|null};Returns:AttendanceRecordRow};
+      check_out: {Args:{p_company_id:string;p_method:string;p_device_id?:string|null};Returns:AttendanceRecordRow};
       record_attendance_with_location: { Args:{p_company_id:string;p_event_type:string;p_method:string;p_latitude?:number;p_longitude?:number;p_accuracy_meters?:number;p_permission_denied?:boolean;p_device_id?:string}; Returns:Json };
       preview_leave_impact_v2: { Args:{p_company_id:string;p_leave_type_id:string;p_start_date:string;p_end_date:string}; Returns:Json };
       calculate_overtime_entry: { Args:{p_attendance_id:string}; Returns:OvertimeEntryRow };

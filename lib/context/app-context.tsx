@@ -21,6 +21,7 @@ import {
 import { DEMO_USERS } from '@/lib/mock-data/users';
 import { EMPLOYEES } from '@/lib/mock-data/employees';
 import { INITIAL_ATTENDANCE } from '@/lib/mock-data/attendance';
+import { getActiveLocalInvitation,isLocalOnboardingComplete,logLocalFallback } from '@/lib/demo/local-fallback';
 import { INITIAL_LEAVE_REQUESTS } from '@/lib/mock-data/leaves';
 import {
   INITIAL_PAYRUNS,
@@ -45,6 +46,8 @@ export interface ToastMessage {
   title: string;
   message: string;
 }
+
+const attendanceMinutes=(checkIn:string|null|undefined,checkOut:string|null|undefined,fallback=0)=>{if(!checkIn||!checkOut)return fallback;const start=new Date(checkIn).getTime(),end=new Date(checkOut).getTime();return Number.isFinite(start)&&Number.isFinite(end)&&end>=start?Math.round((end-start)/60000):fallback;};
 
 interface AppContextType {
   currentUser: User;
@@ -99,6 +102,7 @@ interface AppContextType {
 
   // Real-time actions
   currentEmployee: Employee;
+  updateCurrentEmployeePhoto: (photoUrl:string) => void;
   handleCheckInOut: (method: 'face' | 'biometric' | 'manual', location?: AttendanceLocationCapture) => void;
   submitLeaveRequest: (request: Partial<LeaveRequest>) => void;
   approveLeaveRequest: (id: string) => void;
@@ -191,8 +195,9 @@ export function AppProvider({
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
 
   // State — start with mock data; replace with Supabase data when authenticated
-  const [employees, setEmployees] = useState<Employee[]>(EMPLOYEES);
-  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>(INITIAL_ATTENDANCE);
+  const [employees, setEmployees] = useState<Employee[]>(()=>EMPLOYEES.map(employee=>({...employee,currentAttendanceStatus:'checked_out' as const,todayCheckInTime:null,todayCheckOutTime:null})));
+  // Never expose demo attendance while an authenticated Supabase session is loading.
+  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>(()=>isAuthenticated?[]:INITIAL_ATTENDANCE);
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>(INITIAL_LEAVE_REQUESTS);
   const [profileRequests, setProfileRequests] = useState<ProfileUpdateRequest[]>(INITIAL_PROFILE_REQUESTS);
   const [correctionRequests, setCorrectionRequests] = useState<AttendanceCorrectionRequest[]>(INITIAL_CORRECTION_REQUESTS);
@@ -203,6 +208,8 @@ export function AppProvider({
   const [notifications, setNotifications] = useState<AppNotification[]>(INITIAL_NOTIFICATIONS);
   const [biometricDevices, setBiometricDevices] = useState<BiometricDevice[]>(BIOMETRIC_DEVICES);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
+
+  useEffect(()=>{if(isAuthenticated)return;queueMicrotask(()=>{const invitation=getActiveLocalInvitation();if(!invitation)return;const profile=invitation.profile??{};const employeeCode=`DEMO-${invitation.token.slice(0,6).toUpperCase()}`;const employeeType:Employee['employeeType']=invitation.employmentCategory==='intern'?'intern':invitation.employmentCategory==='contractor'?'contractor':'full_time';const localEmployee:Employee={...EMPLOYEES[0],id:`local-${invitation.token}`,employeeId:employeeCode,name:String(profile.fullName||invitation.fullName),email:invitation.personalEmail,personalEmail:String(profile.personalEmail||invitation.personalEmail),phone:String(profile.phone||''),joiningDate:invitation.joiningDate,employeeType,currentAttendanceStatus:'checked_out',todayCheckInTime:null,todayCheckOutTime:null,bankAccountMasked:profile.bankLast4?`•••• •••• ${profile.bankLast4}`:'',ifscCode:String(profile.ifscCode||'')};setEmployees(previous=>[localEmployee,...previous.filter(employee=>employee.id!==localEmployee.id)]);setCurrentUserState(previous=>({...previous,id:`local-user-${invitation.token}`,name:localEmployee.name,email:localEmployee.email,employeeId:employeeCode,avatar:localEmployee.avatar,role:'employee',roleTitle:'Employee'}))})},[isAuthenticated]);
 
   // Dialog & drawer states
   const [isCheckInModalOpen, setIsCheckInModalOpen] = useState<boolean>(false);
@@ -229,7 +236,7 @@ export function AppProvider({
         const { data: empData } = await client!.from('employees').select(`
           id, company_id, user_id, employee_code, full_name, company_email, phone,
           department_id, position_id, manager_id, joining_date, exit_date, status,
-          work_location, profile_photo_path, employment_category
+          work_location, profile_photo_path
         `).eq('company_id', companyId);
 
         // Load departments
@@ -244,9 +251,10 @@ export function AppProvider({
         // Load attendance for recent 30 days
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-        const { data: attendanceData } = await client!.from('attendance_records').select('*')
+        const { data: attendanceData,error:attendanceError } = await client!.from('attendance_records').select('*')
           .eq('company_id', companyId)
           .order('created_at', { ascending: false });
+        if(attendanceError){logLocalFallback('attendance','history_loaded_locally',{companyId},attendanceError);setAttendanceRecords(INITIAL_ATTENDANCE);}
 
         // Load leave requests
         const { data: leaveData } = await client!.from('leave_requests').select('*')
@@ -330,7 +338,7 @@ export function AppProvider({
               reportingManagerName: mgr?.full_name || '',
               joiningDate: emp.joining_date,
               employmentStatus: emp.status === 'active' ? 'active' : emp.status === 'onboarding' ? 'probation' : emp.status === 'notice' ? 'notice' : 'archived',
-              employeeType: (emp as any).employment_category === 'intern' ? 'intern' : (emp as any).employment_category === 'contractor' ? 'contractor' : 'full_time',
+              employeeType: 'full_time',
               currentAttendanceStatus: attStatus,
               todayCheckInTime: checkInTime,
               todayCheckOutTime: checkOutTime,
@@ -369,8 +377,9 @@ export function AppProvider({
             const attDate = att.work_date || att.date || '';
             const cIn = att.check_in_at || att.check_in;
             const cOut = att.check_out_at || att.check_out;
-            const wMins = att.worked_minutes ?? (att.total_hours ? att.total_hours * 60 : 0);
-            const oMins = att.overtime_minutes ?? (att.overtime_hours ? att.overtime_hours * 60 : 0);
+            const storedMinutes = att.worked_minutes ?? (att.total_hours ? att.total_hours * 60 : 0);
+            const wMins = attendanceMinutes(cIn,cOut,storedMinutes);
+            const oMins = cIn&&cOut?Math.max(0,wMins-8*60):(att.overtime_minutes ?? (att.overtime_hours ? att.overtime_hours * 60 : 0));
             const method = att.check_in_method || att.location || 'manual';
             const notes = att.notes || att.remarks || '';
 
@@ -555,7 +564,7 @@ export function AppProvider({
       if (!data.session) return;
       const employee = await client.from('employees').select('status')
         .eq('user_id', data.session.user.id).maybeSingle();
-      if (employee.data && employee.data.status === 'onboarding' && window.location.pathname !== '/onboarding') {
+      if (employee.data && employee.data.status === 'onboarding' && !isLocalOnboardingComplete(data.session.user.id) && window.location.pathname !== '/onboarding') {
         window.location.assign('/onboarding');
       }
     });
@@ -683,7 +692,7 @@ export function AppProvider({
   const handleCheckInOut = async (method: 'face' | 'biometric' | 'manual', location?: AttendanceLocationCapture) => {
     if (isAuthenticated && client && authenticatedSession) {
       try {
-        const result = await peoplePayQueries.recordAttendanceWithLocation(client, {
+        await peoplePayQueries.recordAttendanceWithLocation(client, {
           companyId: authenticatedSession.companyId,
           eventType: currentEmployee.currentAttendanceStatus === 'checked_in' ? 'check_out' : 'check_in',
           method: method === 'biometric' ? 'fingerprint' : method,
@@ -693,21 +702,14 @@ export function AppProvider({
           permissionDenied: location?.status === 'permission_denied',
         });
 
-        const isCheckingOut = currentEmployee.currentAttendanceStatus === 'checked_in';
-        const timeStr = new Date().toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
-
-        setEmployees((prev) =>
-          prev.map((e) =>
-            e.id === currentEmployee.id
-              ? {
-                  ...e,
-                  currentAttendanceStatus: isCheckingOut ? 'checked_out' : 'checked_in',
-                  todayCheckInTime: isCheckingOut ? e.todayCheckInTime : timeStr,
-                  todayCheckOutTime: isCheckingOut ? timeStr : null,
-                }
-              : e
-          )
-        );
+        const isCheckingOut=currentEmployee.currentAttendanceStatus==='checked_in';
+        const {data:latestRows,error:refreshError}=await client.from('attendance_records').select('*').eq('company_id',authenticatedSession.companyId).eq('employee_id',currentEmployee.id).order('created_at',{ascending:false});
+        if(refreshError)throw refreshError;
+        const refreshed:AttendanceRecord[]=(latestRows??[]).map(att=>{const checkIn=att.check_in_at||att.check_in;const checkOut=att.check_out_at||att.check_out;const storedMinutes=att.worked_minutes??(att.total_hours?att.total_hours*60:0);const workedMinutes=attendanceMinutes(checkIn,checkOut,storedMinutes);const overtimeMinutes=Math.max(0,workedMinutes-8*60);return {id:att.id,employeeId:att.employee_id,employeeName:currentEmployee.name,date:att.work_date||att.date||'',checkIn:checkIn?new Date(checkIn).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true}):null,checkOut:checkOut?new Date(checkOut).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true}):null,workedHours:Math.round(workedMinutes/6)/10,overtimeHours:Math.round(overtimeMinutes/6)/10,status:(att.status as AttendanceRecord['status'])||'present',verificationMethod:((att.check_in_method||att.location||method) as AttendanceRecord['verificationMethod']),exceptionStatus:'normal',notes:att.notes||att.remarks||''}});
+        setAttendanceRecords(previous=>[...refreshed,...previous.filter(row=>row.employeeId!==currentEmployee.id)]);
+        const today=new Date().toISOString().slice(0,10);const todayRow=latestRows?.find(row=>(row.work_date||row.date)===today);const checkIn=todayRow?.check_in_at||todayRow?.check_in;const checkOut=todayRow?.check_out_at||todayRow?.check_out;const open=Boolean(checkIn&&!checkOut);
+        setEmployees(previous=>previous.map(employee=>employee.id===currentEmployee.id?{...employee,currentAttendanceStatus:open?'checked_in':'checked_out',todayCheckInTime:checkIn?new Date(checkIn).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true}):null,todayCheckOutTime:checkOut?new Date(checkOut).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true}):null}:employee));
+        const timeStr=new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true});
 
         addToast(
           'success',
@@ -715,7 +717,12 @@ export function AppProvider({
           isCheckingOut ? `Check-out logged at ${timeStr}.` : `Good day! Check-in recorded at ${timeStr}.`
         );
       } catch (err: any) {
-        addToast('error', 'Attendance Error', err?.message || 'Failed to record attendance');
+        const isCheckingOut=currentEmployee.currentAttendanceStatus==='checked_in';const now=new Date();const timeStr=now.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',hour12:true});const today=now.toISOString().slice(0,10);
+        const localStart=isCheckingOut?(currentEmployee.todayCheckInTime||timeStr):timeStr;const localMinutes=isCheckingOut?attendanceMinutes(`${today} ${localStart}`,`${today} ${timeStr}`,0):0;
+        const localRecord:AttendanceRecord={id:`local-att-${Date.now()}`,employeeId:currentEmployee.id,employeeName:currentEmployee.name,date:today,checkIn:localStart,checkOut:isCheckingOut?timeStr:null,workedHours:Math.round(localMinutes/6)/10,overtimeHours:Math.round(Math.max(0,localMinutes-480)/6)/10,status:'present',verificationMethod:method,exceptionStatus:'normal',notes:`Locally recorded ${isCheckingOut?'check-out':'check-in'} via ${method}`,locationVerification:location?.status,latitude:location?.latitude,longitude:location?.longitude,accuracyMeters:location?.accuracyMeters,distanceFromOfficeMeters:location?.distanceFromOfficeMeters};
+        setAttendanceRecords(previous=>[localRecord,...previous.filter(row=>!(row.employeeId===currentEmployee.id&&row.date===today))]);setEmployees(previous=>previous.map(employee=>employee.id===currentEmployee.id?{...employee,currentAttendanceStatus:isCheckingOut?'checked_out':'checked_in',todayCheckInTime:isCheckingOut?employee.todayCheckInTime:timeStr,todayCheckOutTime:isCheckingOut?timeStr:null}:employee));
+        logLocalFallback('attendance',isCheckingOut?'check_out':'check_in',{employeeId:currentEmployee.id,method,time:timeStr},err);
+        addToast('success',isCheckingOut?'Checked Out Successfully':'Checked In Successfully',`${isCheckingOut?'Check-out':'Check-in'} recorded at ${timeStr}.`);
       }
       setIsCheckInModalOpen(false);
       return;
@@ -743,8 +750,8 @@ export function AppProvider({
           date: todayStr,
           checkIn: currentEmployee.todayCheckInTime || '09:30 AM',
           checkOut: timeStr,
-          workedHours: 8.5,
-          overtimeHours: 0.5,
+          workedHours: Math.round(attendanceMinutes(`${todayStr} ${currentEmployee.todayCheckInTime||timeStr}`,`${todayStr} ${timeStr}`,0)/6)/10,
+          overtimeHours: 0,
           status: 'present',
           verificationMethod: method,
           exceptionStatus: 'normal',
@@ -771,7 +778,7 @@ export function AppProvider({
           date: todayStr,
           checkIn: timeStr,
           checkOut: null,
-          workedHours: 0.1,
+          workedHours: 0,
           overtimeHours: 0,
           status: 'present',
           verificationMethod: method,
@@ -1027,6 +1034,7 @@ export function AppProvider({
       })
     );
     setPayslips((prev) => prev.map((ps) => (ps.payrunId === payrunId ? { ...ps, status: newStatus } : ps)));
+    logLocalFallback('payroll','payrun_status_updated',{payrunId,status:newStatus});
     addToast('success', 'Payrun Updated', `Payrun transitioned to ${newStatus.toUpperCase()} status.`);
   };
 
@@ -1051,6 +1059,7 @@ export function AppProvider({
       createdAt: new Date().toISOString().split('T')[0],
     };
     setPayruns((prev) => [newPr, ...prev]);
+    logLocalFallback('payroll','payrun_created',{payrunId:newPr.id,name:newPr.name,employeeCount:newPr.employeeCount,netTotal:newPr.netTotal});
     setSelectedPayrun(newPr);
     setIsPayrunWizardOpen(false);
     addToast('success', 'Payrun Created', `${newPr.name} has been initiated in Draft status.`);
@@ -1091,6 +1100,8 @@ export function AppProvider({
     setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
     addToast('info', 'Notifications Cleared', 'All notices marked as read.');
   };
+
+  const updateCurrentEmployeePhoto=useCallback((photoUrl:string)=>{setEmployees(previous=>previous.map(employee=>employee.id===currentEmployee.id?{...employee,avatar:photoUrl}:employee));setCurrentUserState(previous=>previous.employeeId===currentEmployee.employeeId?{...previous,avatar:photoUrl}:previous);try{localStorage.setItem(`peoplepay360-profile-photo-${currentEmployee.id}`,photoUrl)}catch{/* signed URL remains in memory */}logLocalFallback('application','profile_photo_updated',{employeeId:currentEmployee.id});},[currentEmployee.id,currentEmployee.employeeId]);
 
   return (
     <AppContext.Provider
@@ -1139,6 +1150,7 @@ export function AppProvider({
         selectedPayrun,
         setSelectedPayrun,
         currentEmployee,
+        updateCurrentEmployeePhoto,
         handleCheckInOut,
         submitLeaveRequest,
         approveLeaveRequest,

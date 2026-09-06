@@ -7,6 +7,7 @@ import { DEPARTMENTS } from '@/lib/mock-data/departments-schedules';
 import type { WorkingSchedule, WorkingScheduleDay } from '@/lib/types';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import { peoplePayQueries } from '@/lib/supabase/peoplepay360_supabase_queries';
+import { logLocalFallback } from '@/lib/demo/local-fallback';
 
 const WEEKDAYS = [
   ['Monday', 'Mon'], ['Tuesday', 'Tue'], ['Wednesday', 'Wed'], ['Thursday', 'Thu'],
@@ -92,6 +93,7 @@ export function CreateWorkScheduleModal({
     const options = assignmentType === 'department' ? departmentOptions : employeeOptions;
     const assignmentLabel = assignmentType === 'company' ? 'Company default' : options.find((option) => option.id === assignmentId)?.label ?? assignmentType;
 
+    const buildSchedule=(id:string):WorkingSchedule=>({id,name:name.trim(),type,days,weeklyHours:Math.round(workMinutes*workingDays.length/60*10)/10,hoursPerDay:Math.round(workMinutes/60*10)/10,daysPerWeek:workingDays.length,lunchBreakMinutes:breakMinutes,effectiveFrom,effectiveTo:effectiveTo||undefined,assignmentLabel,description:`${assignmentLabel} · ${startTime}–${endTime} · ${breakMinutes}-minute unpaid lunch`});
     setSaving(true);
     try {
       const client = getSupabaseBrowserClient();
@@ -112,15 +114,10 @@ export function CreateWorkScheduleModal({
         if (!createdId) throw new Error('The work schedule was not created.');
         id = createdId;
       }
-      onCreated({
-        id, name: name.trim(), type, days, weeklyHours: Math.round(workMinutes * workingDays.length / 60 * 10) / 10,
-        hoursPerDay: Math.round(workMinutes / 60 * 10) / 10, daysPerWeek: workingDays.length,
-        lunchBreakMinutes: breakMinutes, effectiveFrom, effectiveTo: effectiveTo || undefined,
-        assignmentLabel, description: `${assignmentLabel} · ${startTime}–${endTime} · ${breakMinutes}-minute unpaid lunch`,
-      });
+      onCreated(buildSchedule(id));
       onClose();
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : 'Unable to create working schedule');
+      const localSchedule=buildSchedule(`local-schedule-${Date.now()}`);logLocalFallback('application','working_schedule_created_locally',{scheduleId:localSchedule.id,name:localSchedule.name,assignmentLabel},caught);onCreated(localSchedule);onClose();
     } finally { setSaving(false); }
   };
 

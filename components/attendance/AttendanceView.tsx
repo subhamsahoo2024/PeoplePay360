@@ -17,14 +17,13 @@ import {
 } from 'lucide-react';
 import { KPICard } from '@/components/shared/KPICard';
 import { StatusBadge } from '@/components/shared/StatusBadge';
-import { AttendanceVerificationModal } from './AttendanceVerificationModal';
-import { CorrectionRequestModal } from './CorrectionRequestModal';
 import { cn, formatDate } from '@/lib/utils';
 import { downloadCsv } from '@/lib/exports/file-downloads';
 
 export function AttendanceView() {
   const {
     currentEmployee,
+    currentUser,
     attendanceRecords,
     setIsCheckInModalOpen,
     setIsCorrectionModalOpen,
@@ -35,13 +34,14 @@ export function AttendanceView() {
   const [selectedMonth, setSelectedMonth] = useState('2026-09');
 
   const isCheckedIn = currentEmployee.currentAttendanceStatus === 'checked_in';
+  const canViewTeamAttendance=currentUser.role==='hr_manager'||currentUser.role==='admin';
 
   // Filter records for current employee or current context
   const filteredRecords = attendanceRecords.filter((r) => {
-    const matchesEmp = r.employeeId === currentEmployee.id;
+    const matchesEmp = canViewTeamAttendance||r.employeeId === currentEmployee.id;
     const matchesStatus = statusFilter === 'all' || r.status === statusFilter;
     const matchesSearch =
-      r.date.includes(searchTerm) ||
+      r.date.includes(searchTerm) || r.employeeName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       (r.notes && r.notes.toLowerCase().includes(searchTerm.toLowerCase()));
     return matchesEmp && matchesStatus && matchesSearch;
   });
@@ -68,7 +68,7 @@ export function AttendanceView() {
 
         <div className="flex items-center gap-2.5 flex-wrap">
           <button
-            onClick={() => downloadCsv('attendance-records.csv', ['Date', 'Status', 'Check in', 'Check out', 'Worked hours', 'Overtime hours', 'Notes'], filteredRecords.map((record) => [record.date, record.status, record.checkIn, record.checkOut, record.workedHours, record.overtimeHours, record.notes]))}
+            onClick={() => downloadCsv('attendance-records.csv', ['Employee','Date', 'Status', 'Check in', 'Check out', 'Worked hours', 'Overtime hours', 'Notes'], filteredRecords.map((record) => [record.employeeName,record.date,record.status,record.checkIn,record.checkOut,record.workedHours,record.overtimeHours,record.notes]))}
             className="px-3.5 py-2 text-xs font-semibold text-[#714B67] bg-white rounded-[10px] border border-[#D8C7D4] flex items-center gap-1.5"
           >
             <Download className="w-3.5 h-3.5" /> Export CSV
@@ -293,6 +293,7 @@ export function AttendanceView() {
             <table className="w-full text-left text-xs text-[#28262D]">
               <thead className="bg-[#FBFAFB] text-[#74717A] uppercase text-[10px] font-bold tracking-wider border-b border-[#E4E1E5]">
                 <tr>
+                  {canViewTeamAttendance&&<th className="py-3 px-4">Employee</th>}
                   <th className="py-3 px-4">Date</th>
                   <th className="py-3 px-4">Check-In</th>
                   <th className="py-3 px-4">Check-Out</th>
@@ -306,20 +307,21 @@ export function AttendanceView() {
               <tbody className="divide-y divide-[#F4F3F5]">
                 {filteredRecords.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="py-8 text-center text-[#74717A]">
+                    <td colSpan={canViewTeamAttendance?9:8} className="py-8 text-center text-[#74717A]">
                       No attendance logs match the current filters.
                     </td>
                   </tr>
                 ) : (
                   filteredRecords.map((rec) => (
                     <tr key={rec.id} className="hover:bg-[#FBFAFB] transition-colors">
+                      {canViewTeamAttendance&&<td className="py-3 px-4 font-semibold text-[#28262D]">{rec.employeeName}</td>}
                       <td className="py-3 px-4 font-semibold text-[#28262D]">
                         {formatDate(rec.date)}
                       </td>
                       <td className="py-3 px-4 font-mono">{rec.checkIn || '--:--'}</td>
                       <td className="py-3 px-4 font-mono">{rec.checkOut || '--:--'}</td>
                       <td className="py-3 px-4 font-medium tabular-nums">
-                        {rec.workedHours > 0 ? `${rec.workedHours}h` : '-'}
+                        {rec.workedHours > 0 ? `${ rec.workedHours}h` : '-'}
                       </td>
                       <td className="py-3 px-4 font-medium tabular-nums">
                         {rec.overtimeHours > 0 ? (
@@ -357,9 +359,6 @@ export function AttendanceView() {
         </div>
       </div>
 
-      {/* Verification Modals */}
-      <AttendanceVerificationModal />
-      <CorrectionRequestModal />
     </div>
   );
 }

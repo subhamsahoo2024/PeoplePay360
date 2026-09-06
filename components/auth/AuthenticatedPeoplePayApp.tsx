@@ -6,6 +6,7 @@ import { PeoplePayLogo } from '@/components/brand/PeoplePayLogo';
 import PeoplePayApp from '@/components/application/PeoplePayApp';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import type { AppRole } from '@/lib/types';
+import { isLocalOnboardingComplete } from '@/lib/demo/local-fallback';
 
 export interface AuthenticatedSession {
   userId: string;
@@ -23,6 +24,8 @@ export function AuthenticatedPeoplePayApp() {
   const [session, setSession] = React.useState<AuthenticatedSession | null>(null);
   const [loading, setLoading] = React.useState(true);
 
+  const withTimeout = React.useCallback(async <T,>(promise:PromiseLike<T>,milliseconds=10000):Promise<T>=>Promise.race([Promise.resolve(promise),new Promise<T>((_,reject)=>window.setTimeout(()=>reject(new Error('Session verification timed out')),milliseconds))]),[]);
+
   React.useEffect(() => {
     const client = getSupabaseBrowserClient();
     if (!client) {
@@ -31,7 +34,7 @@ export function AuthenticatedPeoplePayApp() {
     }
     (async () => {
       try {
-        const { data: { user } } = await client.auth.getUser();
+        const { data: { user } } = await withTimeout(client.auth.getUser());
         if (!user) {
           router.replace('/');
           return;
@@ -46,12 +49,13 @@ export function AuthenticatedPeoplePayApp() {
         const employee=employeeResult.data;const empErr=employeeResult.error;
 
         if (empErr || !employee) {
-          router.replace('/');
+          await client.auth.signOut({scope:'local'}).catch(()=>undefined);
+          router.replace('/?session=invalid');
           return;
         }
 
         // Check onboarding
-        if (employee.status === 'onboarding') {
+        if (employee.status === 'onboarding'&&!isLocalOnboardingComplete(user.id)) {
           router.replace('/onboarding');
           return;
         }
@@ -87,12 +91,13 @@ export function AuthenticatedPeoplePayApp() {
           // The view will be picked up by AppProvider
         }
       } catch {
-        router.replace('/');
+        await client.auth.signOut({scope:'local'}).catch(()=>undefined);
+        router.replace('/?session=invalid');
       } finally {
         setLoading(false);
       }
     })();
-  }, [router, searchParams]);
+  }, [router, searchParams,withTimeout]);
 
   if (loading || !session) {
     return (

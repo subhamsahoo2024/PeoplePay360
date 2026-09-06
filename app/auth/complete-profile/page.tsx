@@ -95,7 +95,7 @@ export default function CompleteProfilePage() {
       client
         .from('employees')
         .select(`
-          employee_code, company_email, employment_category, joining_date,
+          employee_code, company_email, joining_date,
           companies(name), departments(name), job_positions(title)
         `)
         .eq('user_id', user.id)
@@ -109,7 +109,7 @@ export default function CompleteProfilePage() {
               companyName: emp.companies?.name ?? 'PeoplePay360',
               departmentName: emp.departments?.name ?? 'Engineering',
               positionTitle: emp.job_positions?.title ?? 'Software Engineer',
-              employmentCategory: emp.employment_category ?? 'full_time',
+              employmentCategory: 'full_time',
               joiningDate: emp.joining_date ?? new Date().toISOString().slice(0, 10),
               workLocation: 'Headquarters',
               applicationRole: 'Employee',

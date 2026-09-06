@@ -21,6 +21,7 @@ export function LoginPage() {
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState('');
   const [authenticated, setAuthenticated] = React.useState(false);
+  const sessionNotice=searchParams.get('session')==='invalid'?'Your previous session was invalid or expired. Please sign in again.':'';
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -164,10 +165,10 @@ export function LoginPage() {
               </Link>
             </div>
 
-            {error && (
+            {(error||sessionNotice) && (
               <div role="alert" className="flex items-start gap-2 rounded-[10px] border border-[#F1C3C0] bg-[#FDF1F0] px-3 py-2.5 text-sm text-[#9D3E39]">
                 <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
-                <span>{error}</span>
+                <span>{error||sessionNotice}</span>
               </div>
             )}
 

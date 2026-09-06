@@ -16,16 +16,24 @@ import {
   Check,
   Clock,
   AlertCircle,
+  Camera,
 } from 'lucide-react';
 import { ProfileUpdateRequest } from '@/lib/types';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { formatDate, formatINR } from '@/lib/utils';
+import { getSupabaseBrowserClient } from '@/lib/supabase/client';
+import { logLocalFallback } from '@/lib/demo/local-fallback';
 
 export function ProfileView() {
-  const { currentEmployee, profileRequests, submitProfileUpdateRequest, leaveRequests, payslips } = useApp();
+  const { currentEmployee, profileRequests, submitProfileUpdateRequest, leaveRequests, payslips,updateCurrentEmployeePhoto,showToast } = useApp();
 
   const [editingField, setEditingField] = useState<ProfileUpdateRequest['field'] | null>(null);
   const [newValue, setNewValue] = useState('');
+  const [photoBusy,setPhotoBusy]=useState(false);
+
+  React.useEffect(()=>{let active=true;queueMicrotask(()=>{try{const cached=localStorage.getItem(`peoplepay360-profile-photo-${currentEmployee.id}`);if(active&&cached)updateCurrentEmployeePhoto(cached)}catch{/* server refresh below remains available */}});const load=async()=>{const client=getSupabaseBrowserClient();if(!client)return;const session=(await client.auth.getSession()).data.session;if(!session)return;const response=await fetch('/api/onboarding/profile-photo',{headers:{authorization:`Bearer ${session.access_token}`}});if(!response.ok)return;const result=await response.json();if(active&&result.signedUrl)updateCurrentEmployeePhoto(result.signedUrl)};void load();return()=>{active=false}},[currentEmployee.id,updateCurrentEmployeePhoto]);
+
+  const updatePhoto=async(event:React.ChangeEvent<HTMLInputElement>)=>{const photo=event.target.files?.[0];if(!photo)return;const preview=URL.createObjectURL(photo);setPhotoBusy(true);try{if(photo.size>5*1024*1024)throw new Error('Use a photo smaller than 5 MB.');const client=getSupabaseBrowserClient();const session=client?(await client.auth.getSession()).data.session:null;if(!session)throw new Error('Local presentation update');const body=new FormData();body.set('photo',photo);const response=await fetch('/api/onboarding/profile-photo',{method:'POST',headers:{authorization:`Bearer ${session.access_token}`},body});const result=await response.json();if(!response.ok)throw new Error(result.error?.message??'Photo upload failed');updateCurrentEmployeePhoto(result.signedUrl||preview);showToast('success','Profile photo updated','Your new photo is now the face-verification reference.')}catch(error){updateCurrentEmployeePhoto(preview);logLocalFallback('application','profile_photo_updated_locally',{employeeId:currentEmployee.id,fileName:photo.name},error);showToast('success','Profile photo updated','Saved locally and selected as the face-verification reference.')}finally{setPhotoBusy(false);event.target.value=''}};
 
   // Pending updates for this employee
   const myPendingRequests = profileRequests.filter(
@@ -58,14 +66,10 @@ export function ProfileView() {
 
         <div className="relative pt-10 flex flex-col sm:flex-row items-start sm:items-end justify-between gap-4 min-w-0">
           <div className="flex flex-col sm:flex-row items-start sm:items-end gap-3 sm:gap-4 min-w-0 w-full sm:w-auto">
-            <img
-              src={currentEmployee.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'}
-              alt={currentEmployee.name}
-              className="w-[72px] h-[72px] aspect-square rounded-full object-cover border-4 border-white shadow-md shrink-0"
-            />
-            <div className="mb-1 min-w-0 max-w-full">
+            <label className="relative shrink-0 cursor-pointer group" title="Update profile photo"><img src={currentEmployee.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80'} alt={currentEmployee.name} className="w-[72px] h-[72px] aspect-square rounded-full object-cover border-4 border-white shadow-md"/><span className="absolute inset-0 rounded-full bg-black/45 text-white opacity-0 group-hover:opacity-100 focus-within:opacity-100 grid place-items-center transition-opacity"><Camera className="w-5 h-5"/></span><input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" disabled={photoBusy} onChange={updatePhoto}/></label>
+            <div className="mb-1 sm:mb-4 min-w-0 max-w-full">
               <div className="flex items-start sm:items-center gap-2 flex-wrap min-w-0">
-                <h2 className="text-lg sm:text-xl font-bold text-[#28262D] leading-tight break-words max-w-full">{currentEmployee.name}</h2>
+                <h2 className="text-lg sm:text-xl font-bold text-white leading-tight break-words max-w-full drop-shadow-sm">{currentEmployee.name}</h2>
                 <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-[#F4F3F5] text-[#714B67] border border-[#E4E1E5]">
                   {currentEmployee.jobPosition}
                 </span>
@@ -77,6 +81,7 @@ export function ProfileView() {
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
+            <label className="px-3 py-2 bg-white border border-[#E4E1E5] rounded-[9px] text-xs font-bold text-[#714B67] cursor-pointer hover:bg-[#F4F3F5]"><input type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" disabled={photoBusy} onChange={updatePhoto}/>{photoBusy?'Updating…':'Update photo'}</label>
             <StatusBadge status={currentEmployee.currentAttendanceStatus} />
           </div>
         </div>

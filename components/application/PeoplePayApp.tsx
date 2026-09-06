@@ -45,9 +45,11 @@ import { MedicalProofsQueueView } from '@/components/medical-proof/MedicalProofs
 import { PeoplePayLogo } from '@/components/brand/PeoplePayLogo';
 
 function MainContent() {
-  const { activeTab } = useApp();
+  const { activeTab,dataLoading,authenticated } = useApp();
 
   const [isMobileDrawerOpen, setIsMobileDrawerOpen] = React.useState(false);
+
+  if(authenticated&&dataLoading){return <main className="grid min-h-screen place-items-center bg-[#FBFAFB] p-6" aria-busy="true"><div className="flex flex-col items-center gap-3 text-center"><PeoplePayLogo size={44}/><p className="text-sm font-semibold text-[#714B67]">Loading your workspace…</p><div className="h-6 w-6 animate-spin rounded-full border-2 border-[#714B67] border-t-transparent"/></div></main>}
 
   const renderCurrentView = () => {
     switch (activeTab) {
@@ -183,4 +185,3 @@ export default function PeoplePayApp({ authenticatedSession }: { authenticatedSe
     </AppProvider>
   );
 }
-
