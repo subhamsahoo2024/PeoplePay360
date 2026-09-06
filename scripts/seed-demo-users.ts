@@ -25,7 +25,7 @@ export const DEMO_USER_SPECS: SeedUserSpec[] = [
     phone: '+919876543210',
   },
   {
-    email: 'hr@peoplepay360.demo',
+    email: 'sri7685234@gmail.com',
     name: 'Priya Sundaram',
     code: 'EMP-002',
     role: 'hr_manager',
