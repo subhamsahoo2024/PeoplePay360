@@ -32,7 +32,8 @@ export async function middleware(request: NextRequest) {
 
   // Public routes that don't require auth
   const publicRoutes = ['/', '/demo', '/forgot-password', '/reset-password'];
-  const isPublicRoute = publicRoutes.includes(pathname);
+  const isTokenizedDemoOnboarding=pathname==='/onboarding'&&Boolean(request.nextUrl.searchParams.get('demoInvite'));
+  const isPublicRoute = publicRoutes.includes(pathname)||pathname.startsWith('/demo/')||isTokenizedDemoOnboarding;
   const isApiRoute = pathname.startsWith('/api/');
 
   // Redirect unauthenticated users away from protected routes
@@ -40,13 +41,6 @@ export async function middleware(request: NextRequest) {
     const redirectUrl = request.nextUrl.clone();
     redirectUrl.pathname = '/';
     redirectUrl.searchParams.set('redirect', pathname);
-    return NextResponse.redirect(redirectUrl);
-  }
-
-  // Redirect authenticated users away from login page
-  if (user && pathname === '/') {
-    const redirectUrl = request.nextUrl.clone();
-    redirectUrl.pathname = '/dashboard';
     return NextResponse.redirect(redirectUrl);
   }
 

@@ -10,7 +10,7 @@ All demo user accounts use the default password: **`PeoplePay@360`**
 
 | Role | Name | Email | Primary Features Tested |
 |---|---|---|---|
-| **`admin`** | Vikramaditya Sharma | `admin@peoplepay360.demo` | Role Permissions Matrix, Biometric Devices, Audit Trail, System Config |
+| **`admin`** | Sudeesh K | `admin@peoplepay360.demo` | Role Permissions Matrix, Biometric Devices, Audit Trail, System Config |
 | **`hr_manager`** | Priya Sundaram | `sri7685234@gmail.com` | Employee Directory, Approvals Center, Contracts, Working Schedules, Medical Proofs |
 | **`payroll_manager`** | Rajesh Kulkarni | `payroll.mgr@peoplepay360.demo` | Payruns Execution, Salary Structures, Statutory Rules, Overtime Policy, Reports |
 | **`payroll_user`** | Neha Gupta | `payroll.user@peoplepay360.demo` | Payruns Drafting, Bank Exports, Payslip Generation |

@@ -31,7 +31,7 @@ export class EmailService {
     // 1. Record in demo_email_outbox for UI visibility if demo mode is active
     if (isDemoMode) {
       try {
-        await service.from('demo_email_outbox').insert({
+        const {error}=await service.from('demo_email_outbox').insert({
           company_id: params.companyId,
           recipient_email: params.recipientEmail,
           cc_emails: params.ccEmails ?? [],
@@ -42,8 +42,10 @@ export class EmailService {
           action_url: params.actionUrl,
           created_by: params.createdBy,
         });
+        if(error)throw error;
       } catch (err) {
         console.error('Failed to log email to demo_email_outbox:', err);
+        return {success:false,provider:'demo',failureReason:err instanceof Error?err.message:'Demo mailbox is not installed'};
       }
     }
 

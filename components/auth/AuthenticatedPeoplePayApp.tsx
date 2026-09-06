@@ -6,6 +6,7 @@ import { PeoplePayLogo } from '@/components/brand/PeoplePayLogo';
 import PeoplePayApp from '@/components/application/PeoplePayApp';
 import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import type { AppRole } from '@/lib/types';
+import { isLocalOnboardingComplete } from '@/lib/demo/local-fallback';
 
 export interface AuthenticatedSession {
   userId: string;
@@ -23,6 +24,8 @@ export function AuthenticatedPeoplePayApp() {
   const [session, setSession] = React.useState<AuthenticatedSession | null>(null);
   const [loading, setLoading] = React.useState(true);
 
+  const withTimeout = React.useCallback(async <T,>(promise:PromiseLike<T>,milliseconds=10000):Promise<T>=>Promise.race([Promise.resolve(promise),new Promise<T>((_,reject)=>window.setTimeout(()=>reject(new Error('Session verification timed out')),milliseconds))]),[]);
+
   React.useEffect(() => {
     const client = getSupabaseBrowserClient();
     if (!client) {
@@ -31,27 +34,34 @@ export function AuthenticatedPeoplePayApp() {
     }
     (async () => {
       try {
-        const { data: { user } } = await client.auth.getUser();
+        const { data: { user } } = await withTimeout(client.auth.getUser());
         if (!user) {
           router.replace('/');
           return;
         }
 
-        // Get employee record
-        const { data: employee, error: empErr } = await client
-          .from('employees')
-          .select('id, company_id, full_name, status, employee_code')
-          .eq('user_id', user.id)
-          .maybeSingle();
+        // Keep login compatible with databases where the optional biometric
+        // migration has not been applied yet.
+        const biometricsEnabled=process.env.NEXT_PUBLIC_BIOMETRICS_ENABLED==='true';
+        const employeeResult=biometricsEnabled
+          ? await client.from('employees').select('id, company_id, full_name, status, employee_code, biometric_enrollment_required').eq('user_id',user.id).maybeSingle()
+          : await client.from('employees').select('id, company_id, full_name, status, employee_code').eq('user_id',user.id).maybeSingle();
+        const employee=employeeResult.data;const empErr=employeeResult.error;
 
         if (empErr || !employee) {
-          router.replace('/');
+          await client.auth.signOut({scope:'local'}).catch(()=>undefined);
+          router.replace('/?session=invalid');
           return;
         }
 
         // Check onboarding
-        if (employee.status === 'onboarding') {
+        if (employee.status === 'onboarding'&&!isLocalOnboardingComplete(user.id)) {
           router.replace('/onboarding');
+          return;
+        }
+
+        if (biometricsEnabled&&'biometric_enrollment_required' in employee&&employee.biometric_enrollment_required) {
+          router.replace('/enrollment');
           return;
         }
 
@@ -81,12 +91,13 @@ export function AuthenticatedPeoplePayApp() {
           // The view will be picked up by AppProvider
         }
       } catch {
-        router.replace('/');
+        await client.auth.signOut({scope:'local'}).catch(()=>undefined);
+        router.replace('/?session=invalid');
       } finally {
         setLoading(false);
       }
     })();
-  }, [router, searchParams]);
+  }, [router, searchParams,withTimeout]);
 
   if (loading || !session) {
     return (

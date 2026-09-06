@@ -262,7 +262,7 @@ export const INITIAL_LEAVE_REQUESTS: LeaveRequest[] = [
     estimatedDeduction: 3400,
     estimatedNetSalaryAfter: 30600,
     approverId: 'emp-4',
-    approverName: 'Ananya Deshmukh',
+    approverName: 'Rajesh Kulkarni',
     status: 'submitted',
     appliedDate: '2026-09-04',
   }

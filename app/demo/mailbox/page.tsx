@@ -21,15 +21,18 @@ export default function DemoMailboxPage() {
   const [emails, setEmails] = React.useState<EmailRecord[]>([]);
   const [selectedId, setSelectedId] = React.useState<string | null>(null);
   const [loading, setLoading] = React.useState(true);
+  const [error,setError]=React.useState('');
 
   const fetchEmails = React.useCallback(async () => {
     setLoading(true);
+    setError('');
     const client = getSupabaseBrowserClient();
     if (client) {
-      const { data } = await client
+      const { data,error:queryError } = await client
         .from('demo_email_outbox')
         .select('*')
         .order('created_at', { ascending: false });
+      if(queryError)setError(queryError.message);
       if (data && data.length > 0) {
         setEmails(data as EmailRecord[]);
         setSelectedId((prev) => prev ?? data[0].id);
@@ -84,7 +87,7 @@ export default function DemoMailboxPage() {
               <div className="p-6 text-center text-xs text-[#74717A]">Loading mailbox...</div>
             ) : emails.length === 0 ? (
               <div className="p-6 text-center text-xs text-[#74717A]">
-                No emails sent yet. Create an employee account from HR Manager view to generate an invitation email.
+                {error?<><ShieldAlert className="mx-auto mb-2 h-5 w-5 text-[#C85A54]"/><span className="text-[#9D3E39]">Mailbox unavailable: {error}</span></>:'No emails sent yet. Create an employee account from HR Manager view to generate an invitation email.'}
               </div>
             ) : (
               emails.map((email) => (

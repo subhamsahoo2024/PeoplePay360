@@ -9,25 +9,8 @@ import { getSupabaseBrowserClient } from '@/lib/supabase/client';
 import type { AppRole } from '@/lib/types';
 import { LoginVisual } from './LoginVisual';
 import { LoginTransition } from './LoginTransition';
-
-function getHighestRole(roles: AppRole[]): AppRole {
-  const priority: AppRole[] = ['admin', 'payroll_manager', 'payroll_user', 'hr_manager', 'employee'];
-  for (const role of priority) {
-    if (roles.includes(role)) return role;
-  }
-  return 'employee';
-}
-
-function getRoleDashboardPath(role: AppRole): string {
-  switch (role) {
-    case 'admin': return '/dashboard?view=admin_overview';
-    case 'payroll_manager': return '/dashboard?view=payroll_dashboard';
-    case 'payroll_user': return '/dashboard?view=payroll_dashboard';
-    case 'hr_manager': return '/dashboard?view=employees';
-    case 'employee':
-    default: return '/dashboard?view=overview';
-  }
-}
+import { EMPLOYEE_DEMO_CREDENTIALS, isEmployeeDemoLogin } from '@/lib/auth/demo-credentials';
+import { getHighestRole, getRoleDashboardPath } from '@/lib/auth/role-routing';
 
 export function LoginPage() {
   const router = useRouter();
@@ -38,10 +21,19 @@ export function LoginPage() {
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState('');
   const [authenticated, setAuthenticated] = React.useState(false);
+  const sessionNotice=searchParams.get('session')==='invalid'?'Your previous session was invalid or expired. Please sign in again.':'';
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
     setError('');
+    if (isEmployeeDemoLogin(email, password)) {
+      sessionStorage.setItem('peoplepay360-demo-session', 'employee');
+      setSubmitting(true);
+      setAuthenticated(true);
+      router.prefetch('/demo');
+      window.setTimeout(() => router.replace('/demo'), 1100);
+      return;
+    }
     const client = getSupabaseBrowserClient();
     if (!client) {
       setError('Login is not configured. Add the Supabase URL and anonymous key, or open Demo Mode.');
@@ -173,10 +165,10 @@ export function LoginPage() {
               </Link>
             </div>
 
-            {error && (
+            {(error||sessionNotice) && (
               <div role="alert" className="flex items-start gap-2 rounded-[10px] border border-[#F1C3C0] bg-[#FDF1F0] px-3 py-2.5 text-sm text-[#9D3E39]">
                 <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
-                <span>{error}</span>
+                <span>{error||sessionNotice}</span>
               </div>
             )}
 
@@ -191,11 +183,14 @@ export function LoginPage() {
             <span className="h-px flex-1 bg-[#E4E1E5]" />
           </div>
 
-          <Link href="/demo" className="block w-full rounded-[10px] border border-[#714B67] px-4 py-3 text-center text-sm font-bold text-[#714B67] transition hover:bg-[#F4EFF3]">
-            Open Demo Mode
-          </Link>
-          <p className="mt-3 text-center text-xs text-[#74717A]">Demo Mode uses sample data and does not require an account.</p>
-        </section>
+        <Link href="/demo" className="block w-full rounded-[10px] border border-[#714B67] px-4 py-3 text-center text-sm font-bold text-[#714B67] transition hover:bg-[#F4EFF3]">
+          Open Demo Mode
+        </Link>
+        <p className="mt-3 text-center text-xs text-[#74717A]">Demo Mode uses sample data and does not require an account.</p>
+        <p className="mt-3 rounded-[10px] bg-[#F4F3F5] px-3 py-2 text-center text-[11px] text-[#5C5860]">
+          Presentation login: <strong>{EMPLOYEE_DEMO_CREDENTIALS.email}</strong> / <strong>{EMPLOYEE_DEMO_CREDENTIALS.password}</strong>
+        </p>
+      </section>
       </div>
     </main>
   );

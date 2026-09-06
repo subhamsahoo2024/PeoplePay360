@@ -53,7 +53,7 @@ export function EmployeeOverview() {
               <span>Employee Self-Service Portal</span>
             </div>
             <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight">
-              Good day, {currentEmployee.name.split(' ')[0]}!
+              Good day, {currentEmployee.name}!
             </h1>
             <p className="text-xs md:text-sm text-[#F3EEF2]/80 mt-1 max-w-xl leading-relaxed">
               {currentEmployee.jobPosition} • {currentEmployee.department} • Scheduled Shift: 09:30 AM – 06:30 PM (IST)

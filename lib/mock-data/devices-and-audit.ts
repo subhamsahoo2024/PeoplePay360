@@ -29,7 +29,7 @@ export const BIOMETRIC_DEVICES: BiometricDevice[] = [
     status: 'connected',
     lastSync: '12 minutes ago',
     mappedEmployeesCount: 65,
-    latestEvent: 'Vikram Malhotra (PP-PAY-3015) Face Match 09:32 AM',
+    latestEvent: 'Neha Gupta (PP-PAY-3015) Face Match 09:32 AM',
   },
   {
     id: 'bio-4',
@@ -148,7 +148,7 @@ export const INITIAL_CORRECTION_REQUESTS: AttendanceCorrectionRequest[] = [
 export const AUDIT_EVENTS: AuditEvent[] = [
   {
     id: 'aud-1',
-    user: 'Ananya Deshmukh (Payroll Director)',
+    user: 'Rajesh Kulkarni (Payroll Director)',
     role: 'HR Payroll Manager',
     action: 'Payrun Computed',
     target: 'PAYRUN-2026-09-REG',
@@ -178,7 +178,7 @@ export const AUDIT_EVENTS: AuditEvent[] = [
   },
   {
     id: 'aud-4',
-    user: 'Vikram Malhotra',
+    user: 'Neha Gupta',
     role: 'HR Payroll User',
     action: 'Payslip Draft Viewed',
     target: 'PAYSLIP-202608-EMP1',
@@ -204,7 +204,7 @@ export const AUDIT_LOGS: AuditLogItem[] = [
   {
     id: 'log-1',
     timestamp: '2026-09-04T10:45:00Z',
-    userName: 'Vikram Malhotra',
+    userName: 'Neha Gupta',
     userRole: 'payroll_manager',
     action: 'Payrun Computed (12 Payslips Generated)',
     resource: 'PAYRUN-2026-09-REG',

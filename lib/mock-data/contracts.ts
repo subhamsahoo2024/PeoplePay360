@@ -34,7 +34,7 @@ export const CONTRACTS: Contract[] = [
   {
     id: 'cnt-3',
     employeeId: 'emp-3',
-    employeeName: 'Vikram Malhotra',
+    employeeName: 'Neha Gupta',
     contractReference: 'CNT-2023-FIN-015',
     wage: 58000,
     startDate: '2023-02-10',
@@ -49,7 +49,7 @@ export const CONTRACTS: Contract[] = [
   {
     id: 'cnt-4',
     employeeId: 'emp-4',
-    employeeName: 'Ananya Deshmukh',
+    employeeName: 'Rajesh Kulkarni',
     contractReference: 'CNT-2022-FIN-001',
     wage: 115000,
     startDate: '2022-01-15',
