@@ -392,3 +392,30 @@ export const INITIAL_PAYSLIPS: Payslip[] = [
     ],
   },
 ];
+
+const monthlyPeriods = Array.from({ length: 12 }, (_, index) => {
+  const month = String(index + 1).padStart(2, '0');
+  const lastDay = new Date(Date.UTC(2026, index + 1, 0)).getUTCDate();
+  const monthLabel = new Date(Date.UTC(2026, index, 1)).toLocaleString('en-US', { month: 'long' });
+  return { month, lastDay, monthLabel };
+});
+
+const monthlySamples = INITIAL_PAYSLIPS.flatMap((sample) => monthlyPeriods
+  .filter((period) => !sample.id.includes(`2026${period.month}`))
+  .map((period) => {
+    const grossSalary = sample.grossSalary;
+    const deductions = sample.totalDeductions;
+    return {
+      ...sample,
+      id: `${sample.id.slice(0, -6)}2026${period.month}`,
+      payrunId: `pr-2026${period.month}`,
+      payrunName: `Regular Payrun - ${period.monthLabel} 2026`,
+      payrollPeriod: `01 ${period.monthLabel.slice(0, 3)} 2026 - ${period.lastDay} ${period.monthLabel.slice(0, 3)} 2026`,
+      period: `${period.monthLabel} 2026`,
+      grossSalary,
+      netSalary: grossSalary - deductions,
+      lines: sample.lines.map((line) => ({ ...line, id: `${line.id}-2026${period.month}` })),
+    };
+  }));
+
+export const ALL_INITIAL_PAYSLIPS: Payslip[] = [...INITIAL_PAYSLIPS, ...monthlySamples];

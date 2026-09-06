@@ -103,4 +103,19 @@ export const WORKING_SCHEDULES: WorkingSchedule[] = [
       { day: 'Sunday', dayShort: 'Sun', startTime: '00:00', endTime: '00:00', breakDurationMins: 0, isWorking: false },
     ],
   },
+  {
+    id: 'ws-45',
+    name: 'Extended 45 Hour Schedule (9:00 AM - 7:00 PM)',
+    type: 'standard',
+    weeklyHours: 45,
+    days: [
+      { day: 'Monday', dayShort: 'Mon', startTime: '09:00', endTime: '19:00', breakDurationMins: 60, isWorking: true },
+      { day: 'Tuesday', dayShort: 'Tue', startTime: '09:00', endTime: '19:00', breakDurationMins: 60, isWorking: true },
+      { day: 'Wednesday', dayShort: 'Wed', startTime: '09:00', endTime: '19:00', breakDurationMins: 60, isWorking: true },
+      { day: 'Thursday', dayShort: 'Thu', startTime: '09:00', endTime: '19:00', breakDurationMins: 60, isWorking: true },
+      { day: 'Friday', dayShort: 'Fri', startTime: '09:00', endTime: '19:00', breakDurationMins: 60, isWorking: true },
+      { day: 'Saturday', dayShort: 'Sat', startTime: '00:00', endTime: '00:00', breakDurationMins: 0, isWorking: false },
+      { day: 'Sunday', dayShort: 'Sun', startTime: '00:00', endTime: '00:00', breakDurationMins: 0, isWorking: false },
+    ],
+  },
 ];

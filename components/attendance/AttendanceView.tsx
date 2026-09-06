@@ -25,16 +25,47 @@ export function AttendanceView() {
     currentEmployee,
     currentUser,
     attendanceRecords,
+    payslips,
     setIsCheckInModalOpen,
     setIsCorrectionModalOpen,
+    setSelectedPayslip,
+    setSelectedAttendanceDate,
+    setIsSalaryDrawerOpen,
+    addToast,
+    markAttendancePresentRange,
   } = useApp();
 
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [selectedMonth, setSelectedMonth] = useState('2026-09');
+  const [presentRangeStart,setPresentRangeStart]=useState('2026-09-01');
+  const [presentRangeEnd,setPresentRangeEnd]=useState('2026-09-30');
 
   const isCheckedIn = currentEmployee.currentAttendanceStatus === 'checked_in';
   const canViewTeamAttendance=currentUser.role==='hr_manager'||currentUser.role==='admin';
+
+  const findPayslipForDate = (employeeId: string, date: string) => {
+    const selectedDate = new Date(`${date}T00:00:00`);
+    const month = selectedDate.toLocaleString('en-US', { month: 'long' });
+    const shortMonth = selectedDate.toLocaleString('en-US', { month: 'short' });
+    const year = selectedDate.getFullYear().toString();
+    return payslips.find((payslip) => {
+      const period = (payslip.payrollPeriod || payslip.period || '').toLowerCase();
+      return payslip.employeeId === employeeId && period.includes(year) &&
+        (period.includes(month.toLowerCase()) || period.includes(shortMonth.toLowerCase()));
+    });
+  };
+
+  const handleViewDayPayslip = (employeeId: string, date: string) => {
+    const payslip = findPayslipForDate(employeeId, date);
+    if (!payslip) {
+      addToast('info', 'Payslip unavailable', 'There is no generated payslip covering this work day.');
+      return;
+    }
+    setSelectedPayslip(payslip);
+    setSelectedAttendanceDate(date);
+    setIsSalaryDrawerOpen(true);
+  };
 
   // Filter records for current employee or current context
   const filteredRecords = attendanceRecords.filter((r) => {
@@ -163,6 +194,11 @@ export function AttendanceView() {
             <span className="text-xs font-semibold px-2 py-0.5 rounded-md bg-[#F4F3F5] text-[#714B67]">
               Current Cycle
             </span>
+          </div>
+          <div className="mb-4 p-3 rounded-[10px] bg-[#FBFAFB] border border-[#E4E1E5] text-[11px] space-y-2">
+            <strong className="block text-[#28262D]">Mark present for a date range</strong>
+            <div className="grid grid-cols-2 gap-2"><input type="date" value={presentRangeStart} onChange={event=>setPresentRangeStart(event.target.value)} className="px-2 py-1.5 rounded border border-[#E4E1E5]"/><input type="date" min={presentRangeStart} value={presentRangeEnd} onChange={event=>setPresentRangeEnd(event.target.value)} className="px-2 py-1.5 rounded border border-[#E4E1E5]"/></div>
+            <button type="button" onClick={()=>markAttendancePresentRange(presentRangeStart,presentRangeEnd)} className="w-full py-1.5 rounded bg-[#438A6B] text-white font-bold">Mark working days present</button>
           </div>
 
           {/* Calendar weekdays */}
@@ -301,13 +337,14 @@ export function AttendanceView() {
                   <th className="py-3 px-4">Overtime</th>
                   <th className="py-3 px-4">Verification</th>
                   <th className="py-3 px-4">Status</th>
+                  <th className="py-3 px-4 text-right">Payslip</th>
                   <th className="py-3 px-4 text-right">Exception</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#F4F3F5]">
                 {filteredRecords.length === 0 ? (
                   <tr>
-                    <td colSpan={canViewTeamAttendance?9:8} className="py-8 text-center text-[#74717A]">
+                    <td colSpan={canViewTeamAttendance?10:9} className="py-8 text-center text-[#74717A]">
                       No attendance logs match the current filters.
                     </td>
                   </tr>
@@ -337,6 +374,15 @@ export function AttendanceView() {
                       </td>
                       <td className="py-3 px-4">
                         <StatusBadge status={rec.status} size="sm" />
+                      </td>
+                      <td className="py-3 px-4 text-right">
+                        <button
+                          onClick={() => handleViewDayPayslip(rec.employeeId, rec.date)}
+                          className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#714B67] hover:text-[#5C3C53] hover:underline"
+                          title="Open the payslip covering this work day"
+                        >
+                          <FileCheck className="w-3 h-3" /> View
+                        </button>
                       </td>
                       <td className="py-3 px-4 text-right">
                         {rec.exceptionStatus && rec.exceptionStatus !== 'normal' ? (

@@ -15,13 +15,12 @@ import {
   TrendingDown,
   User,
 } from 'lucide-react';
-import { LEAVE_TYPES } from '@/lib/mock-data/leaves';
 import { formatINR } from '@/lib/utils';
 import { cn } from '@/lib/utils';
 import { calculateLeaveImpact } from '@/lib/domain/peoplepay-calculations';
 
 export function LeaveRequestModal() {
-  const { isLeaveModalOpen, setIsLeaveModalOpen, currentEmployee, submitLeaveRequest } = useApp();
+  const { isLeaveModalOpen, setIsLeaveModalOpen, currentEmployee, submitLeaveRequest, leaveTypes } = useApp();
 
   const [selectedTypeId, setSelectedTypeId] = useState<string>('lt-1');
   const [startDate, setStartDate] = useState<string>('2026-09-18');
@@ -31,7 +30,12 @@ export function LeaveRequestModal() {
   const [reason, setReason] = useState<string>('');
   const [attachmentName, setAttachmentName] = useState<string>('');
 
-  const selectedType = LEAVE_TYPES.find((t) => t.id === selectedTypeId) || LEAVE_TYPES[0];
+  const selectedType = leaveTypes.find((t) => t.id === selectedTypeId) || leaveTypes[0];
+  const employeeLeaveType = useMemo(() => selectedType ? {
+    ...selectedType,
+    totalDays: selectedType.allocations?.[currentEmployee.id]?.totalDays ?? selectedType.totalDays,
+    remainingDays: selectedType.allocations?.[currentEmployee.id]?.remainingDays ?? selectedType.remainingDays,
+  } : selectedType, [selectedType, currentEmployee.id]);
 
   // Calculate live impact
   const impact = useMemo(() => {
@@ -68,8 +72,8 @@ export function LeaveRequestModal() {
     const monthlyGross = currentEmployee.monthlySalaryGross || 45000;
     const leaveImpact = calculateLeaveImpact({
       requestedWorkingDays: workingDays,
-      isPaidLeave: selectedType.isPaid,
-      availablePaidDays: selectedType.remainingDays ?? currentEmployee.paidLeaveBalance,
+      isPaidLeave: employeeLeaveType?.isPaid ?? true,
+      availablePaidDays: employeeLeaveType?.remainingDays ?? currentEmployee.paidLeaveBalance,
       monthlySalaryBasis: monthlyGross,
       payableWorkingDays: 30,
     });
@@ -86,7 +90,7 @@ export function LeaveRequestModal() {
       estimatedNetSalary,
       availablePaidDays: leaveImpact.availablePaidDays,
     };
-  }, [startDate, endDate, isHalfDay, selectedType, currentEmployee]);
+  }, [startDate, endDate, isHalfDay, employeeLeaveType, currentEmployee]);
 
   if (!isLeaveModalOpen) return null;
 
@@ -97,7 +101,7 @@ export function LeaveRequestModal() {
     submitLeaveRequest({
       leaveTypeId: selectedType.id,
       leaveTypeName: selectedType.name,
-      isPaid: selectedType.isPaid,
+      isPaid: employeeLeaveType.isPaid,
       startDate,
       endDate,
       isHalfDay,
@@ -152,7 +156,8 @@ export function LeaveRequestModal() {
                 Leave Type *
               </label>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                {LEAVE_TYPES.map((lt) => {
+                {leaveTypes.map((lt) => {
+                  const employeeType = lt.allocations?.[currentEmployee.id] ? { ...lt, ...lt.allocations[currentEmployee.id] } : lt;
                   const isSel = selectedTypeId === lt.id;
                   return (
                     <button
@@ -169,7 +174,7 @@ export function LeaveRequestModal() {
                       <p className="text-xs font-bold text-[#28262D] truncate">{lt.code}</p>
                       <p className="text-[10px] text-[#74717A] truncate mt-0.5">{lt.name}</p>
                       <div className="mt-1 text-[10px] font-semibold text-[#714B67]">
-                        {lt.isPaid ? `${lt.remainingDays ?? lt.defaultDaysPerYear} paid days left` : 'Unlimited • Loss of Pay'}
+                        {employeeType.isPaid ? `${employeeType.remainingDays ?? employeeType.defaultDaysPerYear} paid days left` : 'Unlimited • Loss of Pay'}
                       </div>
                     </button>
                   );

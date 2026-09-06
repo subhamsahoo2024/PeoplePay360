@@ -32,7 +32,10 @@ export function PayrunsView() {
     currentRole,
     payslips,
     setSelectedPayslip,
+    setSelectedAttendanceDate,
     setIsSalaryDrawerOpen,
+    employees,
+    createPayslip,
   } = useApp();
 
   const [confirmDialog, setConfirmDialog] = useState<{
@@ -50,6 +53,13 @@ export function PayrunsView() {
     description: '',
     variant: 'primary',
   });
+  const [payslipEmployeeId, setPayslipEmployeeId] = useState('');
+  const [payslipStart, setPayslipStart] = useState(new Date().toISOString().slice(0, 8) + '01');
+  const [payslipEnd, setPayslipEnd] = useState(new Date().toISOString().slice(0, 8) + '30');
+  const [payslipGross, setPayslipGross] = useState(0);
+  const [payslipDeductions, setPayslipDeductions] = useState(0);
+  const [payslipMode, setPayslipMode] = useState<'monthly'|'days'>('monthly');
+  const [payslipDays, setPayslipDays] = useState(3);
 
   const activePayrun = selectedPayrun || payruns[0];
 
@@ -78,6 +88,7 @@ export function PayrunsView() {
   };
 
   const isPayrollManagerOrAdmin = currentRole === 'payroll_manager' || currentRole === 'admin';
+  const canCreatePayslip = isPayrollManagerOrAdmin || currentRole === 'hr_manager';
 
   return (
     <div className="space-y-6">
@@ -98,6 +109,43 @@ export function PayrunsView() {
           <span>Initiate New Payrun</span>
         </button>
       </div>
+
+      {canCreatePayslip && (
+        <form className="bg-white rounded-[16px] border border-[#E4E1E5] shadow-xs p-5 space-y-4" onSubmit={(event) => {
+          event.preventDefault();
+          if (!payslipEmployeeId || !payslipStart || !payslipEnd) return;
+          const employee = employees.find(item => item.id === payslipEmployeeId);
+          if (!employee) return;
+          const monthlyGross = employee.monthlySalaryGross || employee.baseSalary || 50000;
+          const selectedGross = payslipGross || monthlyGross;
+          const gross = payslipMode === 'days' ? Math.round(selectedGross / 30 * payslipDays) : selectedGross;
+          createPayslip({
+            employeeId: employee.id,
+            payrollPeriod: `${payslipStart} to ${payslipEnd}`,
+            period: `${payslipStart} to ${payslipEnd}`,
+            grossSalary: gross,
+            totalDeductions: payslipDeductions,
+            netSalary: gross - payslipDeductions,
+            workedDays: payslipMode === 'days' ? payslipDays : 22,
+            status: 'validated',
+          });
+        }}>
+          <div>
+            <h3 className="text-sm font-bold text-[#28262D]">Create Employee Payslip</h3>
+            <p className="text-xs text-[#74717A] mt-1">Create a stored payslip for a selected employee and payroll date range.</p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 text-xs">
+            <select required value={payslipEmployeeId} onChange={event => setPayslipEmployeeId(event.target.value)} className="px-3 py-2 rounded-[9px] border border-[#E4E1E5] bg-[#FBFAFB]"><option value="">Select employee</option>{employees.map(employee => <option key={employee.id} value={employee.id}>{employee.name}</option>)}</select>
+            <select value={payslipMode} onChange={event => setPayslipMode(event.target.value as 'monthly'|'days')} className="px-3 py-2 rounded-[9px] border border-[#E4E1E5] bg-[#FBFAFB]"><option value="monthly">Monthly payslip</option><option value="days">Specific days</option></select>
+            <input required type="date" value={payslipStart} onChange={event => setPayslipStart(event.target.value)} className="px-3 py-2 rounded-[9px] border border-[#E4E1E5] bg-[#FBFAFB]" aria-label="Payslip period start" />
+            <input required type="date" min={payslipStart} value={payslipEnd} onChange={event => setPayslipEnd(event.target.value)} className="px-3 py-2 rounded-[9px] border border-[#E4E1E5] bg-[#FBFAFB]" aria-label="Payslip period end" />
+            <input type="number" min="0" value={payslipGross} onChange={event => setPayslipGross(Number(event.target.value))} className="px-3 py-2 rounded-[9px] border border-[#E4E1E5] bg-[#FBFAFB]" placeholder="Gross salary" aria-label="Gross salary" />
+            <input type="number" min="0" value={payslipDeductions} onChange={event => setPayslipDeductions(Number(event.target.value))} className="px-3 py-2 rounded-[9px] border border-[#E4E1E5] bg-[#FBFAFB]" placeholder="Deductions" aria-label="Total deductions" />
+            {payslipMode === 'days' && <input type="number" min="1" value={payslipDays} onChange={event => setPayslipDays(Number(event.target.value))} className="px-3 py-2 rounded-[9px] border border-[#E4E1E5] bg-[#FBFAFB]" placeholder="Paid days" aria-label="Paid days" />}
+          </div>
+          <div className="flex justify-end"><button className="px-4 py-2 rounded-[9px] bg-[#714B67] text-white text-xs font-bold">Create and store payslip</button></div>
+        </form>
+      )}
 
       {/* Payrun Batches List */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -294,6 +342,7 @@ export function PayrunsView() {
                           <button
                             onClick={() => {
                               setSelectedPayslip(ps);
+                              setSelectedAttendanceDate(null);
                               setIsSalaryDrawerOpen(true);
                             }}
                             className="p-1 text-[#714B67] hover:bg-[#F4F3F5] rounded transition-colors"

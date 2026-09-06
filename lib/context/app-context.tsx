@@ -17,15 +17,18 @@ import {
   PayrunStatus,
   BiometricDevice,
   AttendanceLocationCapture,
+  LeaveType,
 } from '@/lib/types';
 import { DEMO_USERS } from '@/lib/mock-data/users';
 import { EMPLOYEES } from '@/lib/mock-data/employees';
 import { INITIAL_ATTENDANCE } from '@/lib/mock-data/attendance';
-import { getActiveLocalInvitation,isLocalOnboardingComplete,logLocalFallback } from '@/lib/demo/local-fallback';
+import { getActiveLocalInvitation,isLocalOnboardingComplete,logLocalFallback,readLocalData,writeLocalData } from '@/lib/demo/local-fallback';
 import { INITIAL_LEAVE_REQUESTS } from '@/lib/mock-data/leaves';
+import { LEAVE_TYPES } from '@/lib/mock-data/leaves';
 import {
   INITIAL_PAYRUNS,
   INITIAL_PAYSLIPS,
+  ALL_INITIAL_PAYSLIPS,
   SALARY_STRUCTURES,
   SALARY_RULES,
 } from '@/lib/mock-data/payroll';
@@ -49,6 +52,12 @@ export interface ToastMessage {
 
 const attendanceMinutes=(checkIn:string|null|undefined,checkOut:string|null|undefined,fallback=0)=>{if(!checkIn||!checkOut)return fallback;const start=new Date(checkIn).getTime(),end=new Date(checkOut).getTime();return Number.isFinite(start)&&Number.isFinite(end)&&end>=start?Math.round((end-start)/60000):fallback;};
 
+const readPayslipsWithSamples = () => {
+  const stored = readLocalData<Payslip[]>('payslips', []);
+  const storedIds = new Set(stored.map(payslip => payslip.id));
+  return [...stored, ...ALL_INITIAL_PAYSLIPS.filter(payslip => !storedIds.has(payslip.id))];
+};
+
 interface AppContextType {
   currentUser: User;
   currentRole: AppRole;
@@ -59,8 +68,10 @@ interface AppContextType {
   selectedEmployeeId: string | null;
   setSelectedEmployeeId: (id: string | null) => void;
   employees: Employee[];
+  createLocalEmployee: (input: { name: string; email: string; joiningDate: string; employeeType: Employee['employeeType']; departmentId: string; departmentName: string; jobPosition: string; baseSalary: number; monthlySalaryGross: number; salaryStructureName: string; workingScheduleId: string; workingScheduleName: string }) => Employee;
   attendanceRecords: AttendanceRecord[];
   leaveRequests: LeaveRequest[];
+  leaveTypes: LeaveType[];
   profileRequests: ProfileUpdateRequest[];
   correctionRequests: AttendanceCorrectionRequest[];
   payruns: Payrun[];
@@ -97,6 +108,8 @@ interface AppContextType {
   setIsExplainSalaryDiffOpen: (open: boolean) => void;
   selectedPayslip: Payslip | null;
   setSelectedPayslip: (payslip: Payslip | null) => void;
+  selectedAttendanceDate: string | null;
+  setSelectedAttendanceDate: (date: string | null) => void;
   selectedPayrun: Payrun | null;
   setSelectedPayrun: (payrun: Payrun | null) => void;
 
@@ -104,7 +117,11 @@ interface AppContextType {
   currentEmployee: Employee;
   updateCurrentEmployeePhoto: (photoUrl:string) => void;
   handleCheckInOut: (method: 'face' | 'biometric' | 'manual', location?: AttendanceLocationCapture) => void;
+  markAttendancePresentRange: (startDate: string, endDate: string) => void;
   submitLeaveRequest: (request: Partial<LeaveRequest>) => void;
+  createEmployeeLeaveRequest: (employeeId: string, request: Partial<LeaveRequest>) => void;
+  createLeaveType: (leaveType: Omit<LeaveType, 'id'>) => void;
+  allocateLeave: (employeeId: string, leaveTypeId: string, days: number) => void;
   approveLeaveRequest: (id: string) => void;
   refuseLeaveRequest: (id: string, reason?: string) => void;
   approveProfileRequest: (id: string) => void;
@@ -115,6 +132,7 @@ interface AppContextType {
   submitCorrectionRequest: (date: string, inTime: string, outTime: string, reason: string) => void;
   updatePayrunStatus: (payrunId: string, status: PayrunStatus) => void;
   createPayrun: (payrun: Partial<Payrun>) => void;
+  createPayslip: (payslip: Partial<Payslip>) => void;
   addSalaryRule: (rule: Omit<SalaryRule, 'id'>) => void;
   updateSalaryRule: (id: string, rule: Partial<SalaryRule>) => void;
   deleteSalaryRule: (id: string) => void;
@@ -195,19 +213,25 @@ export function AppProvider({
   const [selectedEmployeeId, setSelectedEmployeeId] = useState<string | null>(null);
 
   // State — start with mock data; replace with Supabase data when authenticated
-  const [employees, setEmployees] = useState<Employee[]>(()=>EMPLOYEES.map(employee=>({...employee,currentAttendanceStatus:'checked_out' as const,todayCheckInTime:null,todayCheckOutTime:null})));
+  const [employees, setEmployees] = useState<Employee[]>(()=>isAuthenticated?EMPLOYEES.map(employee=>({...employee,currentAttendanceStatus:'checked_out' as const,todayCheckInTime:null,todayCheckOutTime:null})):readLocalData('employees',EMPLOYEES.map(employee=>({...employee,currentAttendanceStatus:'checked_out' as const,todayCheckInTime:null,todayCheckOutTime:null}))));
   // Never expose demo attendance while an authenticated Supabase session is loading.
   const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>(()=>isAuthenticated?[]:INITIAL_ATTENDANCE);
-  const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>(INITIAL_LEAVE_REQUESTS);
+  const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>(()=>isAuthenticated?INITIAL_LEAVE_REQUESTS:readLocalData('leave-requests',INITIAL_LEAVE_REQUESTS));
+  const [leaveTypes, setLeaveTypes] = useState<LeaveType[]>(()=>isAuthenticated?LEAVE_TYPES:readLocalData('leave-types',LEAVE_TYPES));
   const [profileRequests, setProfileRequests] = useState<ProfileUpdateRequest[]>(INITIAL_PROFILE_REQUESTS);
   const [correctionRequests, setCorrectionRequests] = useState<AttendanceCorrectionRequest[]>(INITIAL_CORRECTION_REQUESTS);
   const [payruns, setPayruns] = useState<Payrun[]>(INITIAL_PAYRUNS);
-  const [payslips, setPayslips] = useState<Payslip[]>(INITIAL_PAYSLIPS);
+  const [payslips, setPayslips] = useState<Payslip[]>(()=>isAuthenticated?ALL_INITIAL_PAYSLIPS:readPayslipsWithSamples());
   const [salaryStructures, setSalaryStructures] = useState<SalaryStructure[]>(SALARY_STRUCTURES);
   const [salaryRules, setSalaryRules] = useState<SalaryRule[]>(SALARY_RULES);
   const [notifications, setNotifications] = useState<AppNotification[]>(INITIAL_NOTIFICATIONS);
   const [biometricDevices, setBiometricDevices] = useState<BiometricDevice[]>(BIOMETRIC_DEVICES);
   const [toasts, setToasts] = useState<ToastMessage[]>([]);
+
+  useEffect(()=>{if(isAuthenticated)return;writeLocalData('leave-requests',leaveRequests)},[isAuthenticated,leaveRequests]);
+  useEffect(()=>{if(isAuthenticated)return;writeLocalData('leave-types',leaveTypes)},[isAuthenticated,leaveTypes]);
+  useEffect(()=>{if(isAuthenticated)return;writeLocalData('payslips',payslips)},[isAuthenticated,payslips]);
+  useEffect(()=>{if(isAuthenticated)return;writeLocalData('employees',employees)},[isAuthenticated,employees]);
 
   useEffect(()=>{if(isAuthenticated)return;queueMicrotask(()=>{const invitation=getActiveLocalInvitation();if(!invitation)return;const profile=invitation.profile??{};const employeeCode=`DEMO-${invitation.token.slice(0,6).toUpperCase()}`;const employeeType:Employee['employeeType']=invitation.employmentCategory==='intern'?'intern':invitation.employmentCategory==='contractor'?'contractor':'full_time';const localEmployee:Employee={...EMPLOYEES[0],id:`local-${invitation.token}`,employeeId:employeeCode,name:String(profile.fullName||invitation.fullName),email:invitation.personalEmail,personalEmail:String(profile.personalEmail||invitation.personalEmail),phone:String(profile.phone||''),joiningDate:invitation.joiningDate,employeeType,currentAttendanceStatus:'checked_out',todayCheckInTime:null,todayCheckOutTime:null,bankAccountMasked:profile.bankLast4?`•••• •••• ${profile.bankLast4}`:'',ifscCode:String(profile.ifscCode||'')};setEmployees(previous=>[localEmployee,...previous.filter(employee=>employee.id!==localEmployee.id)]);setCurrentUserState(previous=>({...previous,id:`local-user-${invitation.token}`,name:localEmployee.name,email:localEmployee.email,employeeId:employeeCode,avatar:localEmployee.avatar,role:'employee',roleTitle:'Employee'}))})},[isAuthenticated]);
 
@@ -220,7 +244,8 @@ export function AppProvider({
   const [isCorrectionModalOpen, setIsCorrectionModalOpen] = useState<boolean>(false);
   const [isPayrunWizardOpen, setIsPayrunWizardOpen] = useState<boolean>(false);
   const [isExplainSalaryDiffOpen, setIsExplainSalaryDiffOpen] = useState<boolean>(false);
-  const [selectedPayslip, setSelectedPayslip] = useState<Payslip | null>(INITIAL_PAYSLIPS[0]);
+  const [selectedPayslip, setSelectedPayslip] = useState<Payslip | null>(ALL_INITIAL_PAYSLIPS[0]);
+  const [selectedAttendanceDate, setSelectedAttendanceDate] = useState<string | null>(null);
   const [selectedPayrun, setSelectedPayrun] = useState<Payrun | null>(INITIAL_PAYRUNS[1]);
 
   // --- Supabase data loading for authenticated sessions ---
@@ -272,6 +297,24 @@ export function AppProvider({
 
         // Load salary structures
         const { data: structData } = await client!.from('salary_structures').select('*').eq('company_id', companyId);
+
+        // Load rules separately because each persisted rule belongs to a structure.
+        const { data: ruleData } = await client!.from('salary_rules').select('*').eq('company_id', companyId).order('sequence');
+
+        if (ruleData && ruleData.length > 0) {
+          setSalaryRules(ruleData.map(rule => ({
+            id: rule.id,
+            name: rule.name,
+            code: rule.code,
+            category: rule.code === 'BASIC' ? 'basic' : rule.category === 'earning' ? 'allowance' : rule.category === 'deduction' ? 'deduction' : 'allowance',
+            calculationType: rule.calculation_method === 'percentage' ? 'percentage' : rule.calculation_method === 'fixed' ? 'fixed' : 'formula',
+            fixedAmount: rule.fixed_amount === null ? undefined : Number(rule.fixed_amount),
+            percentage: rule.percentage === null ? undefined : Number(rule.percentage) * 100,
+            baseRuleCode: rule.percentage_base || undefined,
+            isActive: rule.is_active,
+            active: rule.is_active,
+          })));
+        }
 
         // Load notifications
         const notifData = authenticatedSession?.userId
@@ -403,6 +446,17 @@ export function AppProvider({
 
         // Map leave requests
         if (leaveData && leaveTypes) {
+          setLeaveTypes(leaveTypes.map(lt => ({
+            id: lt.id,
+            name: lt.name,
+            code: lt.code,
+            isPaid: lt.is_paid,
+            defaultDaysPerYear: Number(lt.annual_allocation || 0),
+            totalDays: Number(lt.annual_allocation || 0),
+            remainingDays: Number(lt.annual_allocation || 0),
+            color: lt.is_paid ? '#714B67' : '#C85A54',
+            description: '',
+          })));
           const ltMap = new Map(leaveTypes.map(lt => [lt.id, lt]));
           const mappedLeaves: LeaveRequest[] = leaveData.map(lr => {
             const lt = ltMap.get(lr.leave_type_id);
@@ -528,7 +582,7 @@ export function AppProvider({
             code: st.code,
             isActive: st.is_active,
             description: st.description || '',
-            ruleIds: [],
+            ruleIds: (ruleData || []).filter(rule => rule.salary_structure_id === st.id).map(rule => rule.id),
           }));
           setSalaryStructures(mappedStructs);
         }
@@ -610,6 +664,21 @@ export function AppProvider({
   const currentEmployee =
     employees.find((e) => e.employeeId === currentUser.employeeId || e.id === currentUser.employeeId) ||
     employees[0];
+
+  const createLocalEmployee = (input: { name: string; email: string; joiningDate: string; employeeType: Employee['employeeType']; departmentId: string; departmentName: string; jobPosition: string; baseSalary: number; monthlySalaryGross: number; salaryStructureName: string; workingScheduleId: string; workingScheduleName: string }) => {
+    const employeeKey=input.email.toLowerCase().replace(/[^a-z0-9]+/g,'-');
+    const employee: Employee = { id:`local-employee-${employeeKey}`,employeeId:`DEMO-${employeeKey.slice(-6).toUpperCase()}`,name:input.name,avatar:'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',email:input.email,phone:'',personalEmail:input.email,address:'',jobPosition:input.jobPosition,departmentId:input.departmentId,departmentName:input.departmentName,reportingManagerId:'',reportingManagerName:'',joiningDate:input.joiningDate,employmentStatus:'active',employeeType:input.employeeType,currentAttendanceStatus:'checked_out',todayCheckInTime:null,todayCheckOutTime:null,bankAccountMasked:'',ifscCode:'',panNumber:'',emergencyContact:{name:'',relation:'',phone:''},activeContractId:'',workingScheduleId:input.workingScheduleId,workingScheduleName:input.workingScheduleName,paidLeaveBalance:0,unpaidLeaveTaken:0,pendingRequestsCount:0,attendanceException:false,baseSalary:input.baseSalary,monthlySalaryGross:input.monthlySalaryGross,salaryStructureName:input.salaryStructureName};
+    setEmployees(previous=>[employee,...previous]);
+    addToast('success','Employee Created',`${employee.name} is now available in the local HR directory.`);
+    return employee;
+  };
+
+  const markAttendancePresentRange = (startDate:string,endDate:string) => {
+    if(!startDate||!endDate||startDate>endDate)return;
+    const records:AttendanceRecord[]=[];const cursor=new Date(`${startDate}T00:00:00`);const end=new Date(`${endDate}T00:00:00`);
+    while(cursor<=end){const date=cursor.toISOString().slice(0,10);if(cursor.getDay()!==0&&cursor.getDay()!==6){records.push({id:`att-local-${currentEmployee.id}-${date}`,employeeId:currentEmployee.id,employeeName:currentEmployee.name,date,checkIn:'09:30 AM',checkOut:'06:30 PM',workedHours:8,overtimeHours:0,status:'present',verificationMethod:'manual',exceptionStatus:'normal',notes:'Marked present for demo range'});}cursor.setDate(cursor.getDate()+1)}
+    setAttendanceRecords(previous=>[...records,...previous.filter(item=>!records.some(record=>record.employeeId===item.employeeId&&record.date===item.date))]);addToast('success','Attendance Range Marked',`${records.length} working day(s) marked present.`);
+  };
 
   const addToast = (
     typeOrObj: 'success' | 'warning' | 'error' | 'info' | { type?: 'success' | 'warning' | 'error' | 'info'; title: string; message?: string; description?: string },
@@ -882,6 +951,62 @@ export function AppProvider({
     addToast('success', 'Leave Request Submitted', `Your request for ${newReq.chargeableWorkingDays} day(s) was sent to ${newReq.approverName}.`);
   };
 
+  const createEmployeeLeaveRequest = (employeeId: string, request: Partial<LeaveRequest>) => {
+    const employee = employees.find(item => item.id === employeeId);
+    if (!employee) return;
+    const leaveType = leaveTypes.find(item => item.id === request.leaveTypeId);
+    const newRequest: LeaveRequest = {
+      id: `hr-lr-${Date.now()}`,
+      employeeId,
+      employeeName: employee.name,
+      leaveTypeId: leaveType?.id || request.leaveTypeId || 'lt-1',
+      leaveTypeName: leaveType?.name || request.leaveTypeName || 'Leave',
+      isPaid: leaveType?.isPaid ?? request.isPaid ?? true,
+      startDate: request.startDate || new Date().toISOString().slice(0, 10),
+      endDate: request.endDate || request.startDate || new Date().toISOString().slice(0, 10),
+      isHalfDay: request.isHalfDay ?? false,
+      halfDayPeriod: request.halfDayPeriod,
+      reason: request.reason || 'HR-created time off allocation',
+      calendarDays: request.calendarDays || request.chargeableWorkingDays || 1,
+      excludedWeekends: request.excludedWeekends || 0,
+      excludedHolidays: request.excludedHolidays || 0,
+      chargeableWorkingDays: request.chargeableWorkingDays || 1,
+      paidDaysUsed: leaveType?.isPaid ? request.chargeableWorkingDays || 1 : 0,
+      unpaidDays: leaveType?.isPaid ? 0 : request.chargeableWorkingDays || 1,
+      estimatedDeduction: request.estimatedDeduction || 0,
+      estimatedNetSalaryAfter: request.estimatedNetSalaryAfter || employee.monthlySalaryGross || employee.baseSalary,
+      approverId: currentUser.id,
+      approverName: currentUser.name,
+      status: request.status || 'approved',
+      appliedDate: new Date().toISOString().slice(0, 10),
+    };
+    setLeaveRequests(previous => [newRequest, ...previous]);
+    addToast('success', 'Employee Time Off Created', `${employee.name}'s ${newRequest.leaveTypeName} was recorded.`);
+  };
+
+  const createLeaveType = (leaveType: Omit<LeaveType, 'id'>) => {
+    const newLeaveType: LeaveType = { ...leaveType, id: `lt-local-${Date.now()}` };
+    setLeaveTypes(previous => [...previous, newLeaveType]);
+    addToast('success', 'Leave Type Created', `${newLeaveType.name} is now available for leave requests.`);
+  };
+
+  const allocateLeave = (employeeId: string, leaveTypeId: string, days: number) => {
+    const employee = employees.find(item => item.id === employeeId);
+    const leaveType = leaveTypes.find(item => item.id === leaveTypeId);
+    if (!employee || !leaveType || days <= 0) return;
+    setLeaveTypes(previous => previous.map(item => item.id === leaveTypeId ? {
+      ...item,
+      allocations: {
+        ...(item.allocations || {}),
+        [employeeId]: {
+          totalDays: (item.allocations?.[employeeId]?.totalDays ?? item.totalDays ?? item.defaultDaysPerYear) + days,
+          remainingDays: (item.allocations?.[employeeId]?.remainingDays ?? item.remainingDays ?? item.defaultDaysPerYear) + days,
+        },
+      },
+    } : item));
+    addToast('success', 'Leave Allocated', `${days} day(s) of ${leaveType.name} allocated to ${employee.name}.`);
+  };
+
   // --- Leave approval with Supabase ---
   const approveLeaveRequest = async (id: string) => {
     if (isAuthenticated && client) {
@@ -1065,6 +1190,50 @@ export function AppProvider({
     addToast('success', 'Payrun Created', `${newPr.name} has been initiated in Draft status.`);
   };
 
+  const createPayslip = (input: Partial<Payslip>) => {
+    const employee = employees.find(item => item.id === input.employeeId) || currentEmployee;
+    const grossSalary = input.grossSalary && input.grossSalary > 0 ? input.grossSalary : employee.monthlySalaryGross || employee.baseSalary || 50000;
+    const totalDeductions = input.totalDeductions && input.totalDeductions > 0 ? input.totalDeductions : 0;
+    const newPayslip: Payslip = {
+      id: `ps-local-${Date.now()}`,
+      payrunId: input.payrunId || 'pr-local-manual',
+      payrunName: input.payrunName || 'HR Manual Payroll Entry',
+      employeeId: employee.id,
+      employeeName: employee.name,
+      employeeCode: employee.employeeId,
+      department: employee.departmentName,
+      jobPosition: employee.jobPosition,
+      contractId: employee.activeContractId,
+      salaryStructureId: input.salaryStructureId || '',
+      salaryStructureName: input.salaryStructureName || 'Manual HR Payslip',
+      payrollPeriod: input.payrollPeriod || `${new Date().toISOString().slice(0, 7)}-01 to ${new Date().toISOString().slice(0, 7)}-30`,
+      period: input.period || input.payrollPeriod,
+      payslipNumber: input.payslipNumber || `PS-${new Date().getFullYear()}-${Date.now().toString().slice(-6)}`,
+      workedDays: input.workedDays ?? 0,
+      paidLeaveDays: input.paidLeaveDays ?? 0,
+      unpaidLeaveDays: input.unpaidLeaveDays ?? 0,
+      basicSalary: input.basicSalary && input.basicSalary > 0 ? input.basicSalary : Math.round(grossSalary * 0.6),
+      hra: input.hra && input.hra > 0 ? input.hra : Math.round(grossSalary * 0.25),
+      travelAllowance: input.travelAllowance ?? 0,
+      otherAllowances: input.otherAllowances ?? 0,
+      grossSalary,
+      bonus: input.bonus ?? 0,
+      appraisalAdjustment: input.appraisalAdjustment ?? 0,
+      overtime: input.overtime ?? 0,
+      paidLeaveAdjustment: input.paidLeaveAdjustment ?? 0,
+      unpaidLeaveDeduction: input.unpaidLeaveDeduction ?? 0,
+      taxDeduction: input.taxDeduction ?? 0,
+      otherDeductions: input.otherDeductions ?? totalDeductions,
+      totalDeductions,
+      netSalary: input.netSalary ?? grossSalary - totalDeductions,
+      status: input.status || 'validated',
+      warnings: [],
+      lines: input.lines || [],
+    };
+    setPayslips(previous => [newPayslip, ...previous]);
+    addToast('success', 'Payslip Created', `${newPayslip.payslipNumber} was created for ${employee.name}.`);
+  };
+
   const addSalaryRule = (rule: Omit<SalaryRule, 'id'>) => {
     const newRule: SalaryRule = { ...rule, id: 'rule-' + Date.now() };
     setSalaryRules((prev) => [...prev, newRule]);
@@ -1115,8 +1284,10 @@ export function AppProvider({
         selectedEmployeeId,
         setSelectedEmployeeId,
         employees,
+        createLocalEmployee,
         attendanceRecords,
         leaveRequests,
+        leaveTypes,
         profileRequests,
         correctionRequests,
         payruns,
@@ -1147,12 +1318,18 @@ export function AppProvider({
         setIsExplainSalaryDiffOpen,
         selectedPayslip,
         setSelectedPayslip,
+        selectedAttendanceDate,
+        setSelectedAttendanceDate,
         selectedPayrun,
         setSelectedPayrun,
         currentEmployee,
         updateCurrentEmployeePhoto,
         handleCheckInOut,
+        markAttendancePresentRange,
         submitLeaveRequest,
+        createEmployeeLeaveRequest,
+        createLeaveType,
+        allocateLeave,
         approveLeaveRequest,
         refuseLeaveRequest,
         approveProfileRequest,
@@ -1163,6 +1340,7 @@ export function AppProvider({
         submitCorrectionRequest,
         updatePayrunStatus,
         createPayrun,
+        createPayslip,
         addSalaryRule,
         updateSalaryRule,
         deleteSalaryRule,

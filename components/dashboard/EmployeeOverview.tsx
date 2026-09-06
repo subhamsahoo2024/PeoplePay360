@@ -30,6 +30,7 @@ export function EmployeeOverview() {
     setActiveTab,
     payslips,
     setSelectedPayslip,
+    setSelectedAttendanceDate,
     setIsSalaryDrawerOpen,
     leaveRequests,
   } = useApp();
@@ -122,6 +123,7 @@ export function EmployeeOverview() {
           actionText="Salary Breakdown"
           onClick={() => {
             if (latestPayslip) setSelectedPayslip(latestPayslip);
+            setSelectedAttendanceDate(null);
             setIsSalaryDrawerOpen(true);
           }}
         />
@@ -254,6 +256,7 @@ export function EmployeeOverview() {
                     <button
                       onClick={() => {
                         setSelectedPayslip(ps);
+                        setSelectedAttendanceDate(null);
                         setIsSalaryDrawerOpen(true);
                       }}
                       className="p-1.5 rounded-[8px] bg-[#F4F3F5] hover:bg-[#714B67] hover:text-white text-[#714B67] transition-colors"
