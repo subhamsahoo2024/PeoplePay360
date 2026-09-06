@@ -179,6 +179,7 @@ export interface LeaveType {
   description: string;
   remainingDays?: number;
   totalDays?: number;
+  allocations?: Record<string, { totalDays: number; remainingDays: number }>;
 }
 
 export interface LeaveBalance {

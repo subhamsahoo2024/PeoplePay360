@@ -1,5 +1,5 @@
 import { jsPDF } from 'jspdf';
-import type { Employee, Payslip } from '@/lib/types';
+import type { Employee, Payslip, PayslipLine } from '@/lib/types';
 
 // jsPDF's built-in Helvetica font does not contain the rupee glyph. Keeping the
 // ISO currency code prevents glyph substitution and preserves column alignment.
@@ -34,19 +34,28 @@ export async function buildPayslipPdf(ps:Payslip, employee:Employee, company={le
   const info=[['Employee',ps.employeeName],['Employee ID',ps.employeeCode],['Department',ps.department],['Designation',ps.jobPosition],['Joining date',employee.joiningDate],['Bank account',employee.bankAccountMasked],['PAN',employee.panNumber||'—'],['UAN',employee.uanNumber||'—']];
   doc.setFillColor(251,250,251);doc.roundedRect(16,55,178,33,2,2,'F');doc.setFontSize(8);
   info.forEach(([label,value],i)=>{const col=i%4,row=Math.floor(i/4),x=20+col*43.5,y=63+row*14;doc.setTextColor(...grey);doc.setFont('helvetica','normal');doc.text(label,x,y);doc.setTextColor(...ink);doc.setFont('helvetica','bold');doc.text(String(value),x,y+4,{maxWidth:39})});
-  const lop=ps.lopDays??ps.unpaidLeaveDays??0;const otHours=ps.lines.find(l=>l.category==='overtime')?.hoursAffected??0;
+  const fallbackLines: PayslipLine[] = [
+    { id: 'pdf-basic', name: 'Basic Salary', code: 'BASIC', category: 'basic' as const, amount: Number(ps.basicSalary || ps.grossSalary || 0), source: 'salary_rule' as const },
+    { id: 'pdf-hra', name: 'House Rent Allowance (HRA)', code: 'HRA', category: 'allowance' as const, amount: Number(ps.hra || 0), source: 'salary_rule' as const },
+    { id: 'pdf-travel', name: 'Travel Allowance', code: 'TRAV', category: 'allowance' as const, amount: Number(ps.travelAllowance || 0), source: 'salary_rule' as const },
+    { id: 'pdf-other-earning', name: 'Other Allowances', code: 'OTHER', category: 'allowance' as const, amount: Number(ps.otherAllowances || 0) + Number(ps.overtime || 0) + Math.max(0, Number(ps.grossSalary || 0) - Number(ps.basicSalary || 0) - Number(ps.hra || 0) - Number(ps.travelAllowance || 0) - Number(ps.otherAllowances || 0) - Number(ps.overtime || 0)), source: 'salary_rule' as const },
+    { id: 'pdf-tax', name: 'Tax Deduction', code: 'TDS', category: 'tax' as const, amount: Number(ps.taxDeduction || 0), source: 'salary_rule' as const },
+    { id: 'pdf-other-deduction', name: 'Other Deductions', code: 'OTHER_DED', category: 'deduction' as const, amount: Math.max(0, Number(ps.totalDeductions || 0) - Number(ps.taxDeduction || 0) - Number(ps.unpaidLeaveDeduction || 0)), source: 'salary_rule' as const },
+  ].filter(line => line.amount > 0);
+  const pdfLines = ps.lines?.length ? ps.lines : fallbackLines;
+  const lop=ps.lopDays??ps.unpaidLeaveDays??0;const otHours=pdfLines.find(l=>l.category==='overtime')?.hoursAffected??0;
   const metrics=[['Paid days',String(ps.workedDays+ps.paidLeaveDays)],['Unpaid-leave days',String(lop)],['Overtime hours',String(otHours)],['Actual loss of pay',money(ps.unpaidLeaveDeduction)]];
   metrics.forEach(([l,v],i)=>{const x=16+i*44.5;doc.setDrawColor(228,225,229);doc.rect(x,93,42,16);doc.setTextColor(...grey);doc.setFont('helvetica','normal');doc.text(l,x+3,99);doc.setTextColor(...ink);doc.setFont('helvetica','bold');doc.setFontSize(10);doc.text(v,x+3,105);doc.setFontSize(8)});
 
-  const earnings=ps.lines.filter(l=>['basic','allowance','overtime','adjustment'].includes(l.category));
-  const deductions=ps.lines.filter(l=>['deduction','tax'].includes(l.category));
+  const earnings=pdfLines.filter(l=>['basic','allowance','overtime','adjustment'].includes(l.category));
+  const deductions=pdfLines.filter(l=>['deduction','tax'].includes(l.category));
   const grossTotal=earnings.reduce((sum,line)=>sum+Number(line.amount),0);
   const lineDeductions=deductions.reduce((sum,line)=>sum+Number(line.amount),0);
   const hasLopLine=deductions.some(line=>['LOP','UNPAID_LEAVE','UNPAID_LEAVE_DEDUCTION'].includes(line.code));
   const lossOfPay=hasLopLine?0:Number(ps.unpaidLeaveDeduction||0);
   const deductionTotal=lineDeductions+lossOfPay;
   const netTotal=grossTotal-deductionTotal;
-  const table=(title:string,rows:typeof ps.lines,x:number,y:number,w:number,color:[number,number,number],extra?:{name:string;amount:number})=>{
+  const table=(title:string,rows:typeof pdfLines,x:number,y:number,w:number,color:[number,number,number],extra?:{name:string;amount:number})=>{
     doc.setFillColor(...color);doc.rect(x,y,w,8,'F');doc.setTextColor(255,255,255);doc.setFont('helvetica','bold');doc.setFontSize(8);doc.text(title,x+3,y+5.3);doc.text('AMOUNT',x+w-3,y+5.3,{align:'right'});
     let yy=y+8;const visible=extra?[...rows,{...rows[0],id:'pdf-lop',name:extra.name,amount:extra.amount}]:rows;
     visible.forEach((row,index)=>{doc.setFillColor(index%2===0?251:255,index%2===0?250:255,index%2===0?251:255);doc.rect(x,yy,w,8,'F');doc.setTextColor(...ink);doc.setFont('helvetica','normal');doc.setFontSize(8);const label=doc.splitTextToSize(row.name,w-31)[0];doc.text(label,x+3,yy+5.2);doc.setFont('helvetica','bold');doc.text(money(Number(row.amount)),x+w-3,yy+5.2,{align:'right'});yy+=8});

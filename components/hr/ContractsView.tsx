@@ -14,18 +14,27 @@ import {
   Eye,
   AlertCircle,
   X,
+  Plus,
 } from 'lucide-react';
 import { CONTRACTS } from '@/lib/mock-data/contracts';
 import { Contract } from '@/lib/types';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { formatINR, formatDate } from '@/lib/utils';
 import { motion, AnimatePresence } from 'motion/react';
+import { WORKING_SCHEDULES } from '@/lib/mock-data/departments-schedules';
 
 export function ContractsView() {
-  const [contractsList, setContractsList] = useState<Contract[]>(CONTRACTS);
+  const { employees } = useApp();
+  const [contractsList, setContractsList] = useState<Contract[]>(() => {
+    try { const stored=JSON.parse(localStorage.getItem('peoplepay360-local-contracts')??'[]') as Contract[]; return [...stored,...CONTRACTS.filter(item=>!stored.some(saved=>saved.id===item.id))]; } catch { return CONTRACTS; }
+  });
+  const [isCreateOpen,setIsCreateOpen]=useState(false);
+  const [scheduleOptions,setScheduleOptions]=useState(WORKING_SCHEDULES);
+  const [newContract,setNewContract]=useState({employeeId:'',workingScheduleId:'',startDate:new Date().toISOString().slice(0,10),endDate:'',wage:50000,status:'draft' as Contract['status']});
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedContract, setSelectedContract] = useState<Contract | null>(null);
+  React.useEffect(()=>{queueMicrotask(()=>{try{const stored=JSON.parse(localStorage.getItem('peoplepay360-local-work-schedules')??'[]') as typeof WORKING_SCHEDULES;setScheduleOptions([...stored,...WORKING_SCHEDULES.filter(item=>!stored.some(saved=>saved.id===item.id))]);}catch{/* seeded schedules remain available */}})},[]);
 
   // Filter
   const filtered = contractsList.filter((c) => {
@@ -48,6 +57,16 @@ export function ContractsView() {
     setSelectedContract(approved);
   };
 
+  const saveContract = (event: React.FormEvent) => {
+    event.preventDefault();
+    const employee=employees.find(item=>item.id===newContract.employeeId); const schedule=scheduleOptions.find(item=>item.id===newContract.workingScheduleId);
+    if(!employee)return;
+    const contract:Contract={id:`local-contract-${Date.now()}`,employeeId:employee.id,employeeName:employee.name,contractReference:`CNT-DEMO-${Date.now().toString().slice(-6)}`,wage:newContract.wage,wageMonthly:newContract.wage,wageAnnual:newContract.wage*12,startDate:newContract.startDate,endDate:newContract.endDate||undefined,department:employee.departmentName,jobPosition:employee.jobPosition,salaryStructureId:'str-1',salaryStructureName:employee.salaryStructureName||'Standard Corporate Salary Structure',workingScheduleId:newContract.workingScheduleId,workingScheduleName:schedule?.name||'Company Default',status:newContract.status,isActive:newContract.status==='running'};
+    setContractsList(current=>[contract,...current]);
+    try { const stored=JSON.parse(localStorage.getItem('peoplepay360-local-contracts')??'[]') as Contract[];localStorage.setItem('peoplepay360-local-contracts',JSON.stringify([contract,...stored])); } catch {/* in-memory fallback */}
+    setNewContract({employeeId:'',workingScheduleId:'',startDate:new Date().toISOString().slice(0,10),endDate:'',wage:50000,status:'draft'});setIsCreateOpen(false);
+  };
+
   return (
     <div className="space-y-6">
       {/* Top Banner */}
@@ -60,11 +79,14 @@ export function ContractsView() {
         </div>
 
         <div className="flex items-center gap-2 text-xs">
+          <button onClick={()=>setIsCreateOpen(true)} className="px-3 py-2 bg-[#714B67] text-white rounded-[10px] font-bold flex items-center gap-1.5"><Plus className="w-4 h-4"/>Create Contract</button>
           <span className="font-semibold text-[#438A6B] bg-[#EBF6F0] px-3 py-1.5 rounded-[10px] border border-[#C3E6D5]">
             {contractsList.filter((c) => c.status === 'running').length} Running Contracts
           </span>
         </div>
       </div>
+
+      {isCreateOpen&&<div className="fixed inset-0 z-50 bg-black/40 flex items-center justify-center p-4"><form onSubmit={saveContract} className="w-full max-w-lg bg-white rounded-[16px] p-5 space-y-3 text-xs"><div className="flex justify-between"><h3 className="font-bold text-sm">Create Contract</h3><button type="button" onClick={()=>setIsCreateOpen(false)}><X className="w-4 h-4"/></button></div><label className="block">Employee<select required value={newContract.employeeId} onChange={e=>setNewContract({...newContract,employeeId:e.target.value})} className="w-full mt-1 p-2 border rounded"><option value="">Select employee</option>{employees.map(employee=><option key={employee.id} value={employee.id}>{employee.name}</option>)}</select></label><label className="block">Working schedule<select required value={newContract.workingScheduleId} onChange={e=>setNewContract({...newContract,workingScheduleId:e.target.value})} className="w-full mt-1 p-2 border rounded"><option value="">Select schedule</option>{WORKING_SCHEDULES.map(schedule=><option key={schedule.id} value={schedule.id}>{schedule.name} ({schedule.weeklyHours}h)</option>)}</select></label><div className="grid grid-cols-2 gap-2"><label>Start date<input required type="date" value={newContract.startDate} onChange={e=>setNewContract({...newContract,startDate:e.target.value})} className="w-full mt-1 p-2 border rounded"/></label><label>End date<input type="date" min={newContract.startDate} value={newContract.endDate} onChange={e=>setNewContract({...newContract,endDate:e.target.value})} className="w-full mt-1 p-2 border rounded"/></label></div><div className="grid grid-cols-2 gap-2"><label>Monthly wage<input required type="number" min="1" value={newContract.wage} onChange={e=>setNewContract({...newContract,wage:Number(e.target.value)})} className="w-full mt-1 p-2 border rounded"/></label><label>Status<select value={newContract.status} onChange={e=>setNewContract({...newContract,status:e.target.value as Contract['status']})} className="w-full mt-1 p-2 border rounded"><option value="draft">Draft</option><option value="running">Running</option></select></label></div><div className="flex justify-end gap-2"><button type="button" onClick={()=>setIsCreateOpen(false)} className="px-3 py-2 border rounded">Cancel</button><button className="px-3 py-2 bg-[#714B67] text-white rounded font-bold">Create contract</button></div></form></div>}
 
       {/* Warning Callout Banners if any */}
       {(expiringCount > 0 || mismatchCount > 0) && (

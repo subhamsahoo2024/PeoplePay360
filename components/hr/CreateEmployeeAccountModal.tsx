@@ -19,7 +19,7 @@ const gmailComposeUrl = ({to,subject,body}:MailDraft) => {
 };
 
 export function CreateEmployeeAccountModal({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const {authenticated,companyId}=useApp();
+  const {authenticated,companyId,createLocalEmployee}=useApp();
   const [departments, setDepartments] = React.useState<Department[]>([]);
   const [positions, setPositions] = React.useState<Position[]>([]);
   const [structures,setStructures]=React.useState<NamedRecord[]>([]); const [schedules,setSchedules]=React.useState<NamedRecord[]>([]);
@@ -55,7 +55,12 @@ export function CreateEmployeeAccountModal({ open, onClose }: { open: boolean; o
     const gmailTab=window.open('about:blank','peoplepay360-gmail-compose');
     if(gmailTab){gmailTab.document.title='Preparing PeoplePay360 invitation…';gmailTab.document.body.innerHTML='<p style="font:16px system-ui;padding:24px">Creating employee account and preparing Gmail…</p>'}
     try {
-      if(!authenticated){await new Promise(resolve=>window.setTimeout(resolve,450));const firstName=form.fullName.trim().split(/\s+/)[0]||'Employee';const invitation=createLocalInvitation({fullName:form.fullName.trim(),personalEmail:form.personalEmail.trim(),joiningDate:form.joiningDate,employmentCategory:form.employmentCategory});const appUrl=process.env.NEXT_PUBLIC_APP_URL||window.location.origin;const activationUrl=`${appUrl}/reset-password?invite=1&demoInvite=${encodeURIComponent(invitation.token)}`;const draft={to:form.personalEmail.trim(),subject:'Activate your PeoplePay360 employee account',body:`Hello ${firstName},\n\nYour PeoplePay360 employee account and contract are ready.\n\nCreate your password and complete your employee profile using this link:\n\n${activationUrl}\n\nRegards,\nPeoplePay360 HR`};setMailDraft(draft);if(gmailTab)gmailTab.location.replace(gmailComposeUrl(draft));else window.open(gmailComposeUrl(draft),'_blank','noopener,noreferrer');setSent(true);return}
+      if(!authenticated){
+        await new Promise(resolve=>window.setTimeout(resolve,450));
+        const firstName=form.fullName.trim().split(/\s+/)[0]||'Employee';
+        const invitation=createLocalInvitation({fullName:form.fullName.trim(),personalEmail:form.personalEmail.trim(),joiningDate:form.joiningDate,employmentCategory:form.employmentCategory});
+        createLocalEmployee({name:form.fullName.trim(),email:form.personalEmail.trim(),joiningDate:form.joiningDate,employeeType:form.employmentCategory==='intern'?'intern':form.employmentCategory==='contractor'?'contractor':'full_time',departmentId:form.departmentId,departmentName:departments.find(item=>item.id===form.departmentId)?.name||'General',jobPosition:positions.find(item=>item.id===form.positionId)?.title||'Employee',baseSalary:form.basicSalary,monthlySalaryGross:form.monthlyGross,salaryStructureName:structures.find(item=>item.id===form.salaryStructureId)?.name||'Standard Corporate Salary Structure',workingScheduleId:form.workingScheduleId,workingScheduleName:schedules.find(item=>item.id===form.workingScheduleId)?.name||'Company Default'});
+        const appUrl=process.env.NEXT_PUBLIC_APP_URL||window.location.origin;const activationUrl=`${appUrl}/reset-password?invite=1&demoInvite=${encodeURIComponent(invitation.token)}`;const draft={to:form.personalEmail.trim(),subject:'Activate your PeoplePay360 employee account',body:`Hello ${firstName},\n\nYour PeoplePay360 employee account and contract are ready.\n\nCreate your password and complete your employee profile using this link:\n\n${activationUrl}\n\nRegards,\nPeoplePay360 HR`};setMailDraft(draft);if(gmailTab)gmailTab.location.replace(gmailComposeUrl(draft));else window.open(gmailComposeUrl(draft),'_blank','noopener,noreferrer');setSent(true);return}
       const client = getSupabaseBrowserClient();
       if (!client || !companyId) throw new Error('Supabase is not configured');
       const { data: { session } } = await client.auth.getSession();

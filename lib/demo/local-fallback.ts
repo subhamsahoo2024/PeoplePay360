@@ -15,10 +15,21 @@ const EVENT_KEY = 'peoplepay360-local-audit-log';
 const ONBOARDING_KEY = 'peoplepay360-local-onboarding-complete';
 const INVITATION_KEY = 'peoplepay360-local-invitations';
 const ACTIVE_INVITATION_KEY = 'peoplepay360-active-local-invitation';
+const DATA_PREFIX = 'peoplepay360-local-data-';
 
 export interface LocalInvitation {token:string;fullName:string;personalEmail:string;joiningDate:string;employmentCategory:string;createdAt:string;passwordCreatedAt?:string;profile?:Record<string,unknown>}
 
 const storage = () => typeof window === 'undefined' ? null : window.localStorage;
+
+export function readLocalData<T>(key:string,fallback:T):T {
+  const target=storage();if(!target)return fallback;
+  try {const value=target.getItem(`${DATA_PREFIX}${key}`);return value===null?fallback:JSON.parse(value) as T;} catch {return fallback;}
+}
+
+export function writeLocalData<T>(key:string,value:T) {
+  const target=storage();if(!target)return;
+  try {target.setItem(`${DATA_PREFIX}${key}`,JSON.stringify(value));} catch { /* Local persistence must not block the workflow. */ }
+}
 
 export function logLocalFallback(area:LocalFallbackArea,action:string,payload?:Record<string,unknown>,error?:unknown) {
   const target=storage();if(!target)return;

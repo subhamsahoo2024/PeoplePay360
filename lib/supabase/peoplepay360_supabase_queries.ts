@@ -21,6 +21,11 @@ export const peoplePayQueries = {
     unwrap(await client.from('loan_payments').select('*').eq('loan_id', loanId).order('created_at', { ascending:false })),
   activeOvertimePolicy: async (client:PeoplePayClient, companyId:string, onDate:string) =>
     unwrap(await client.from('overtime_policies').select('*').eq('company_id',companyId).lte('effective_from',onDate).or(`effective_to.is.null,effective_to.gte.${onDate}`).order('version',{ascending:false}).limit(1).maybeSingle()),
+  nextOvertimePolicyVersion: async (client:PeoplePayClient, companyId:string) => {
+    const { data, error } = await client.from('overtime_policies').select('version').eq('company_id', companyId).order('version', { ascending: false }).limit(1).maybeSingle();
+    if (error) throw error;
+    return (data?.version ?? 0) + 1;
+  },
   saveOvertimePolicy: async (client:PeoplePayClient, values:Database['public']['Tables']['overtime_policies']['Insert']) =>
     unwrap(await client.from('overtime_policies').insert(values).select().single()),
   overtimeEntries: async (client:PeoplePayClient, employeeId:string) =>

@@ -30,6 +30,7 @@ export function SalaryBreakdownDrawer() {
     selectedPayslip,
     currentEmployee,
     setIsExplainSalaryDiffOpen,
+    selectedAttendanceDate,
   } = useApp();
 
   const [isPFModalOpen, setIsPFModalOpen] = React.useState(false);
@@ -114,6 +115,11 @@ export function SalaryBreakdownDrawer() {
                   <p className="text-xs text-[#74717A] mt-0.5">
                     {period} • Ref: <span className="font-mono text-[#714B67]">{payslipNumber}</span>
                   </p>
+                  {selectedAttendanceDate && (
+                    <p className="text-[11px] text-[#438A6B] mt-1 font-semibold">
+                      Work day: {formatDate(selectedAttendanceDate)}
+                    </p>
+                  )}
                 </div>
               </div>
 

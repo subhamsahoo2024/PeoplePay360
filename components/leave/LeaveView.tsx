@@ -16,7 +16,6 @@ import {
   ChevronDown,
   Download,
 } from 'lucide-react';
-import { LEAVE_TYPES } from '@/lib/mock-data/leaves';
 import { StatusBadge } from '@/components/shared/StatusBadge';
 import { LeaveRequestModal } from './LeaveRequestModal';
 import { MedicalProofUploadModal } from '@/components/medical-proof/MedicalProofUploadModal';
@@ -26,7 +25,7 @@ import { MedicalProof } from '@/lib/types';
 import { downloadCsv } from '@/lib/exports/file-downloads';
 
 export function LeaveView() {
-  const { currentEmployee, leaveRequests, payslips, setIsLeaveModalOpen } = useApp();
+  const { currentEmployee, currentRole, employees, leaveRequests, leaveTypes, payslips, setIsLeaveModalOpen, createEmployeeLeaveRequest, createLeaveType, allocateLeave } = useApp();
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [expandedRequest, setExpandedRequest] = useState<string | null>(null);
@@ -35,6 +34,17 @@ export function LeaveView() {
   const [medicalProofs, setMedicalProofs] = useState<MedicalProof[]>([]);
   const [selectedProofToUpload, setSelectedProofToUpload] = useState<MedicalProof | null>(null);
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [hrEmployeeId, setHrEmployeeId] = useState('');
+  const [hrLeaveTypeId, setHrLeaveTypeId] = useState('');
+  const [hrStartDate, setHrStartDate] = useState(new Date().toISOString().slice(0, 10));
+  const [hrEndDate, setHrEndDate] = useState(new Date().toISOString().slice(0, 10));
+  const [hrReason, setHrReason] = useState('HR-approved time off');
+  const [allocationDays, setAllocationDays] = useState(1);
+  const [newTypeName, setNewTypeName] = useState('');
+  const [newTypeCode, setNewTypeCode] = useState('');
+  const [newTypePaid, setNewTypePaid] = useState(true);
+  const [newTypeDays, setNewTypeDays] = useState(10);
+  const isHr = currentRole === 'hr_manager' || currentRole === 'admin';
 
   const loadMedicalProofs = React.useCallback(() => {
     medicalProofService.getProofsForEmployee(currentEmployee.id).then(setMedicalProofs);
@@ -131,9 +141,10 @@ export function LeaveView() {
 
       {/* Leave Balances Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        {LEAVE_TYPES.map((lt) => {
-          const total = lt.totalDays || lt.defaultDaysPerYear || 12;
-          const remaining = lt.remainingDays ?? lt.defaultDaysPerYear ?? 10;
+        {leaveTypes.map((lt) => {
+          const employeeAllocation = lt.allocations?.[currentEmployee.id];
+          const total = employeeAllocation?.totalDays || lt.totalDays || lt.defaultDaysPerYear || 12;
+          const remaining = employeeAllocation?.remainingDays ?? lt.remainingDays ?? lt.defaultDaysPerYear ?? 10;
           const percent = total > 0 ? Math.min(100, Math.round((remaining / total) * 100)) : 0;
           return (
             <div
@@ -189,6 +200,40 @@ export function LeaveView() {
           );
         })}
       </div>
+
+      {isHr && (
+        <div className="bg-white rounded-[16px] border border-[#E4E1E5] shadow-xs p-5 space-y-4">
+          <div>
+            <h3 className="text-sm font-bold text-[#28262D]">HR Leave Administration</h3>
+            <p className="text-xs text-[#74717A] mt-1">Create employee time off, allocate balances, and add leave types. Changes are stored locally in demo mode.</p>
+          </div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 text-xs">
+            <form className="space-y-2 p-3 rounded-[12px] bg-[#FBFAFB] border border-[#E4E1E5]" onSubmit={(event) => { event.preventDefault(); if (!hrEmployeeId || !hrLeaveTypeId) return; createEmployeeLeaveRequest(hrEmployeeId, { leaveTypeId: hrLeaveTypeId, startDate: hrStartDate, endDate: hrEndDate, reason: hrReason, chargeableWorkingDays: 1, calendarDays: 1, status: 'approved' }); }}>
+              <strong className="block text-[#28262D]">Create time off for employee</strong>
+              <select required value={hrEmployeeId} onChange={event => setHrEmployeeId(event.target.value)} className="w-full px-2 py-2 rounded-[8px] border border-[#E4E1E5] bg-white"><option value="">Select employee</option>{employees.map(employee => <option key={employee.id} value={employee.id}>{employee.name}</option>)}</select>
+              <select required value={hrLeaveTypeId} onChange={event => setHrLeaveTypeId(event.target.value)} className="w-full px-2 py-2 rounded-[8px] border border-[#E4E1E5] bg-white"><option value="">Select leave type</option>{leaveTypes.map(type => <option key={type.id} value={type.id}>{type.code} · {type.name}</option>)}</select>
+              <div className="grid grid-cols-2 gap-2"><input required type="date" value={hrStartDate} onChange={event => setHrStartDate(event.target.value)} className="px-2 py-2 rounded-[8px] border border-[#E4E1E5] bg-white" /><input required type="date" min={hrStartDate} value={hrEndDate} onChange={event => setHrEndDate(event.target.value)} className="px-2 py-2 rounded-[8px] border border-[#E4E1E5] bg-white" /></div>
+              <input required value={hrReason} onChange={event => setHrReason(event.target.value)} className="w-full px-2 py-2 rounded-[8px] border border-[#E4E1E5] bg-white" placeholder="Reason" />
+              <button className="w-full py-2 rounded-[8px] bg-[#714B67] text-white font-bold">Create approved time off</button>
+            </form>
+            <form className="space-y-2 p-3 rounded-[12px] bg-[#FBFAFB] border border-[#E4E1E5]" onSubmit={(event) => { event.preventDefault(); if (!hrEmployeeId || !hrLeaveTypeId) return; allocateLeave(hrEmployeeId, hrLeaveTypeId, allocationDays); }}>
+              <strong className="block text-[#28262D]">Allocate leave balance</strong>
+              <select required value={hrEmployeeId} onChange={event => setHrEmployeeId(event.target.value)} className="w-full px-2 py-2 rounded-[8px] border border-[#E4E1E5] bg-white"><option value="">Select employee</option>{employees.map(employee => <option key={employee.id} value={employee.id}>{employee.name}</option>)}</select>
+              <select required value={hrLeaveTypeId} onChange={event => setHrLeaveTypeId(event.target.value)} className="w-full px-2 py-2 rounded-[8px] border border-[#E4E1E5] bg-white"><option value="">Select leave type</option>{leaveTypes.map(type => <option key={type.id} value={type.id}>{type.code} · {type.name}</option>)}</select>
+              <input required type="number" min="0.5" step="0.5" value={allocationDays} onChange={event => setAllocationDays(Number(event.target.value))} className="w-full px-2 py-2 rounded-[8px] border border-[#E4E1E5] bg-white" />
+              <button className="w-full py-2 rounded-[8px] border border-[#D8C7D4] text-[#714B67] font-bold">Allocate days</button>
+            </form>
+            <form className="space-y-2 p-3 rounded-[12px] bg-[#FBFAFB] border border-[#E4E1E5]" onSubmit={(event) => { event.preventDefault(); if (!newTypeName.trim() || !newTypeCode.trim()) return; createLeaveType({ name: newTypeName, code: newTypeCode.toUpperCase(), isPaid: newTypePaid, defaultDaysPerYear: newTypeDays, totalDays: newTypeDays, remainingDays: newTypeDays, color: newTypePaid ? '#714B67' : '#C85A54', description: 'Locally created HR leave type.' }); setNewTypeName(''); setNewTypeCode(''); }}>
+              <strong className="block text-[#28262D]">Create leave type</strong>
+              <input required value={newTypeName} onChange={event => setNewTypeName(event.target.value)} className="w-full px-2 py-2 rounded-[8px] border border-[#E4E1E5] bg-white" placeholder="Leave type name" />
+              <input required value={newTypeCode} onChange={event => setNewTypeCode(event.target.value)} className="w-full px-2 py-2 rounded-[8px] border border-[#E4E1E5] bg-white uppercase" placeholder="Code" />
+              <input required type="number" min="0" value={newTypeDays} onChange={event => setNewTypeDays(Number(event.target.value))} className="w-full px-2 py-2 rounded-[8px] border border-[#E4E1E5] bg-white" placeholder="Annual days" />
+              <label className="flex items-center gap-2"><input type="checkbox" checked={newTypePaid} onChange={event => setNewTypePaid(event.target.checked)} /> Paid leave</label>
+              <button className="w-full py-2 rounded-[8px] bg-[#438A6B] text-white font-bold">Create leave type</button>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Leave Requests Table */}
       <div className="bg-white rounded-[16px] border border-[#E4E1E5] shadow-xs flex flex-col overflow-hidden">

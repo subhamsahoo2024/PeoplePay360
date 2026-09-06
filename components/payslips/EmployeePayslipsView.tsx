@@ -11,6 +11,7 @@ import {
   Building2,
   Calendar,
   HelpCircle,
+  RotateCcw,
 } from 'lucide-react';
 import { KPICard } from '@/components/shared/KPICard';
 import { StatusBadge } from '@/components/shared/StatusBadge';
@@ -18,24 +19,55 @@ import { SalaryBreakdownDrawer } from './SalaryBreakdownDrawer';
 import { ExplainDifferenceModal } from './ExplainDifferenceModal';
 import { formatINR, formatDate } from '@/lib/utils';
 
+function parsePayslipPeriod(period: string): [string, string] | null {
+  const isoDates = period.match(/\d{4}-\d{2}-\d{2}/g);
+  if (isoDates && isoDates.length >= 2) return [isoDates[0], isoDates[1]];
+
+  const textDates = period.match(/\d{1,2}\s+[A-Za-z]{3,9}\s+\d{4}/g);
+  if (!textDates || textDates.length < 2) return null;
+
+  const toInputDate = (value: string) => {
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  };
+  const start = toInputDate(textDates[0]);
+  const end = toInputDate(textDates[1]);
+  return start && end ? [start, end] : null;
+}
+
 export function EmployeePayslipsView() {
   const {
     currentEmployee,
     payslips,
     setSelectedPayslip,
+    setSelectedAttendanceDate,
     setIsSalaryDrawerOpen,
     setIsExplainSalaryDiffOpen,
   } = useApp();
+
+  const [fromDate, setFromDate] = React.useState('');
+  const [toDate, setToDate] = React.useState('');
 
   // Filter payslips for this employee
   const myPayslips = payslips.filter(
     (p) => p.employeeId === currentEmployee.id || p.employeeCode === currentEmployee.employeeId
   );
 
+  const hasInvalidRange = Boolean(fromDate && toDate && fromDate > toDate);
+  const filteredPayslips = myPayslips.filter((payslip) => {
+    if (hasInvalidRange || (!fromDate && !toDate)) return !hasInvalidRange;
+    const bounds = parsePayslipPeriod(payslip.payrollPeriod || payslip.period || '');
+    if (!bounds) return false;
+    const [periodStart, periodEnd] = bounds;
+    return (!fromDate || periodEnd >= fromDate) && (!toDate || periodStart <= toDate);
+  });
+
   const latestPayslip = myPayslips[0] || payslips[0];
 
   const handleOpenBreakdown = (ps: any) => {
     setSelectedPayslip(ps);
+    setSelectedAttendanceDate(null);
     setIsSalaryDrawerOpen(true);
   };
 
@@ -103,8 +135,46 @@ export function EmployeePayslipsView() {
       <div className="bg-white rounded-[16px] border border-[#E4E1E5] shadow-xs overflow-hidden">
         <div className="p-4 border-b border-[#F4F3F5] flex items-center justify-between">
           <h3 className="text-sm font-bold text-[#28262D]">Historical Payslips</h3>
-          <span className="text-xs text-[#74717A]">Financial Year 2026-27</span>
+          <div className="flex items-center gap-2 flex-wrap justify-end">
+            <label className="flex items-center gap-1.5 text-[11px] text-[#74717A]">
+              From
+              <input
+                type="date"
+                value={fromDate}
+                onChange={(event) => setFromDate(event.target.value)}
+                className="px-2 py-1 rounded-[8px] border border-[#E4E1E5] bg-[#FBFAFB] text-[11px] text-[#28262D] outline-none focus:border-[#714B67]"
+                aria-label="Payslip range start date"
+              />
+            </label>
+            <label className="flex items-center gap-1.5 text-[11px] text-[#74717A]">
+              To
+              <input
+                type="date"
+                value={toDate}
+                onChange={(event) => setToDate(event.target.value)}
+                className="px-2 py-1 rounded-[8px] border border-[#E4E1E5] bg-[#FBFAFB] text-[11px] text-[#28262D] outline-none focus:border-[#714B67]"
+                aria-label="Payslip range end date"
+              />
+            </label>
+            {(fromDate || toDate) && (
+              <button
+                type="button"
+                onClick={() => { setFromDate(''); setToDate(''); }}
+                className="p-1.5 rounded-[8px] text-[#74717A] hover:bg-[#F4F3F5] hover:text-[#714B67]"
+                title="Clear date range"
+                aria-label="Clear date range"
+              >
+                <RotateCcw className="w-3.5 h-3.5" />
+              </button>
+            )}
+          </div>
         </div>
+
+        {hasInvalidRange && (
+          <p className="px-4 py-2 text-[11px] text-[#C85A54] bg-[#FDF1F0] border-b border-[#F6CBC8]">
+            The start date must be on or before the end date.
+          </p>
+        )}
 
         <div className="overflow-x-auto">
           <table className="w-full text-left text-xs text-[#28262D]">
@@ -120,10 +190,10 @@ export function EmployeePayslipsView() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#F4F3F5]">
-              {myPayslips.map((ps) => (
+              {filteredPayslips.map((ps) => (
                 <tr key={ps.id} className="hover:bg-[#FBFAFB] transition-colors">
                   <td className="py-3.5 px-4 font-semibold text-[#28262D]">
-                    {ps.period}
+                    {ps.period || ps.payrollPeriod}
                   </td>
                   <td className="py-3.5 px-4 font-mono text-[11px] text-[#714B67]">
                     {ps.payslipNumber || `PS-2026-${ps.id.slice(-4).toUpperCase()}`}
@@ -160,6 +230,13 @@ export function EmployeePayslipsView() {
                   </td>
                 </tr>
               ))}
+              {filteredPayslips.length === 0 && (
+                <tr>
+                  <td colSpan={7} className="py-8 text-center text-[#74717A]">
+                    No payslips cover the selected date range.
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>

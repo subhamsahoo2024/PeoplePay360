@@ -15,13 +15,13 @@ import {
   Info,
 } from 'lucide-react';
 import { SalaryStructure } from '@/lib/types';
-import { SALARY_RULES } from '@/lib/mock-data/payroll';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '@/lib/utils';
 
 export function SalaryStructuresView() {
   const {
     salaryStructures,
+    salaryRules,
     addSalaryStructure,
     updateSalaryStructure,
     currentRole,
@@ -53,7 +53,7 @@ export function SalaryStructuresView() {
 
   const handleSave = (e: React.FormEvent) => {
     e.preventDefault();
-    const selected=SALARY_RULES.filter(rule=>formData.ruleIds?.includes(rule.id));
+    const selected=salaryRules.filter(rule=>formData.ruleIds?.includes(rule.id));
     const errors:string[]=[];
     if(!formData.name?.trim())errors.push('Structure name is required.');
     if(selected.length===0)errors.push('Select at least one salary rule.');
@@ -119,7 +119,7 @@ export function SalaryStructuresView() {
       {/* Structures Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {salaryStructures.map((s) => {
-          const rules = SALARY_RULES.filter((r) => s.ruleIds.includes(r.id));
+          const rules = salaryRules.filter((r) => s.ruleIds.includes(r.id));
 
           return (
             <div
@@ -248,7 +248,7 @@ export function SalaryStructuresView() {
                     Assign Salary Rules
                   </label>
                   <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto p-2 border border-[#E4E1E5] rounded-[10px] bg-[#FBFAFB]">
-                    {SALARY_RULES.map((rule) => {
+                    {salaryRules.map((rule) => {
                       const isChecked = formData.ruleIds?.includes(rule.id);
                       return (
                         <label
