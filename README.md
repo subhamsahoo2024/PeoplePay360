@@ -6,8 +6,6 @@ PeoplePay360 is a role-based HR and payroll platform that connects employee reco
 
 The platform helps employees understand their salary and leave impact while helping HR and payroll teams identify errors before payment. Its core idea is simple: **every salary should be calculated correctly, verified before payment, and clearly explained to the employee.**
 
-> Current status: the original demo UI is now accompanied by an additive Supabase compatibility layer, protected employee-invitation and onboarding routes, atomic leave/loan/payroll RPCs, private document exports, and domain regression tests. Some legacy screens still use deterministic mock state until a Supabase project is linked and seeded.
-
 ## Problem
 
 Many organizations manage employee information, attendance, leave, contracts, and payroll in separate systems. This creates several problems:
@@ -423,43 +421,5 @@ refactor: move mock payroll data into service layer
 6. Request review from another team member.
 7. Merge after review and conflict resolution.
 
-## Roadmap
-
-- [x] Define roles and module access
-- [x] Design employee and payroll workflows
-- [x] Add leave salary-impact experience
-- [x] Define Payroll Readiness and Impact Simulator
-- [ ] Complete responsive frontend implementation
-- [ ] Connect Odoo backend services
-- [ ] Integrate attendance-device events
-- [ ] Add secure face verification
-- [ ] Generate real payslip PDFs
-- [ ] Add email delivery
-- [ ] Add automated tests and deployment workflow
-
-Update the roadmap checkboxes to match the repository's actual implementation before submission.
-
-## Team
-
-Add the final team information here:
-
-| Member | Responsibility |
-|---|---|
-| Team Member 1 | Project lead and integration |
-| Team Member 2 | Employee and attendance experience |
-| Team Member 3 | Leave and HR workflows |
-| Team Member 4 | Payroll and salary explanation |
-| Team Member 5 | Dashboards and reports |
-| Team Member 6 | Testing, documentation, and demo |
-
-## Hackathon
-
-Developed for **Odoo Hackathon 2026** under the **PeoplePay360 HR & Payroll** problem statement.
-
-## License
-
-Add the license selected by the team before public distribution. If no license is included, the repository remains protected by default copyright rules.
-
----
 
 **PeoplePay360 — Accurate payroll. Clear explanations. Confident decisions.**
