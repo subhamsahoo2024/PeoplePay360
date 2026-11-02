@@ -21,7 +21,13 @@ export function LoginPage() {
   const [submitting, setSubmitting] = React.useState(false);
   const [error, setError] = React.useState('');
   const [authenticated, setAuthenticated] = React.useState(false);
-  const sessionNotice=searchParams.get('session')==='invalid'?'Your previous session was invalid or expired. Please sign in again.':'';
+  const [sessionNotice, setSessionNotice] = React.useState('');
+
+  React.useEffect(() => {
+    if (searchParams.get('session') === 'invalid') {
+      setSessionNotice('Your previous session was invalid or expired. Please sign in again.');
+    }
+  }, [searchParams]);
 
   const submit = async (event: React.FormEvent) => {
     event.preventDefault();
